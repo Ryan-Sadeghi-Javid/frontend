@@ -2,11 +2,20 @@
 "use client";
 
 import { useState } from "react";
-import type { AppStep, IncidentFormData } from "@/types";
+import type { IncidentFormData } from "@/types";
 import { initialIncidentFormData } from "@/lib/constants";
 import { uploadEvidenceFile } from "@/lib/api/s3-upload";
 import { submitIncident } from "@/lib/api/submitIncident";
 import { finalizeIncidentVerification } from "@/lib/api/finalizeIncidentVerification";
+
+type AppStep =
+  | "SHOWING_HOMEPAGE"
+  | "FILLING_ACCOUNT_INFO"
+  | "PENDING_ID_VERIFICATION"
+  | "DEFER_TO_PLATFORM"
+  | "SUBMITTING_INCIDENT"
+  | "SHOWING_CONFIRMATION";
+
 
 export function useIncidentFlow() {
   const [currentStep, setCurrentStep] = useState<AppStep>("SHOWING_HOMEPAGE");

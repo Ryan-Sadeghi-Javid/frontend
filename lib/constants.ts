@@ -98,5 +98,5 @@ export const initialIncidentFormData: IncidentFormData = {
 }
 
 // Dynamic field requirements and labels (legacy - keeping for compatibility)
-export const FIELD_REQUIREMENTS: Record<HarmType, Record<string, string[]>> = {}
+export const FIELD_REQUIREMENTS: Partial<Record<HarmType, Record<string, string[]>>> = {}
 export const DYNAMIC_FIELD_LABELS: Record<string, string> = {}
