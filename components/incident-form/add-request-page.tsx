@@ -60,7 +60,7 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
           : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         harmType: "",
         selectedPlatforms: [],
-        platformData: {},
+        platformData: {} as Record<PlatformSelect, PlatformProfile>,
       }
       return { ...base, harmTypeGroups: [first] }
     }
@@ -115,7 +115,7 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
         : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       harmType: "",
       selectedPlatforms: [],
-      platformData: {},
+      platformData: {} as Record<PlatformSelect, PlatformProfile>,
     }
     setFormData((prev) => ({
       ...prev,
@@ -139,7 +139,7 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
 
           // If harm type changed, reset platform data
           if (updates.harmType && updates.harmType !== group.harmType) {
-            updatedGroup.platformData = {}
+            updatedGroup.platformData = {} as Record<PlatformSelect, PlatformProfile>
             updatedGroup.selectedPlatforms.forEach((platform) => {
               updatedGroup.platformData[platform] = createInitialPlatformData(platform, updates.harmType as HarmType)
             })
@@ -739,21 +739,6 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
                     className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="violationReason" className="text-sm font-medium text-gray-700">
-                  Why is this a violation? / Detailed Description <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="violationReason"
-                  name="violationReason"
-                  value={formData.violationReason}
-                  onChange={handleChange}
-                  rows={4}
-                  required
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
               </div>
 
               <div className="space-y-2">
