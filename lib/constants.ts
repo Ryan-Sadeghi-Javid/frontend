@@ -1,14 +1,21 @@
-import type { HarmType, PlatformDynamic, IncidentFormData } from "@/types"
+import type { HarmType, PlatformSelect, IncidentClassification, IncidentFormData } from "@/types"
 
-export const HARM_TYPES = ["Hacked Account Take over", "Impersonation", "Fraud/Scam"] as const
-export const PLATFORMS_DYNAMIC = ["Instagram", "Facebook", "Messenger", "WhatsApp"] as const
-export const ALL_PLATFORMS_SELECT = [
+// Harm Types
+export const HARM_TYPES: HarmType[] = ["Hacked", "Impersonation", "NCII", "Fraud"]
+
+// All Platforms for General Selection Dropdown
+export const ALL_PLATFORMS_SELECT: PlatformSelect[] = [
   "Instagram",
   "Facebook",
   "Messenger",
-  "WhatsApp"
-] as const
-export const INCIDENT_CLASSIFICATIONS = [
+  "WhatsApp",
+]
+
+// Platforms for Dynamic Questions
+export const PLATFORMS_DYNAMIC = ["Instagram", "Facebook", "Messenger", "WhatsApp"]
+
+// Secondary Incident Classification
+export const INCIDENT_CLASSIFICATIONS: IncidentClassification[] = [
   "Sale of illegal goods",
   "Harassment",
   "Hate Speech",
@@ -18,56 +25,68 @@ export const INCIDENT_CLASSIFICATIONS = [
   "Scam",
   "False Information",
   "Something else",
-] as const
+]
 
-export const FIELD_REQUIREMENTS: Record<HarmType, Partial<Record<PlatformDynamic, string[]>>> = {
-  "Hacked Account Take over": {
-    Instagram: ["accountUrl", "usedTelcoAuth", "emailUsedToCreate", "newEmailUsedOnMeta"],
-    Messenger: ["accountUrl", "usedTelcoAuth", "emailUsedToCreate", "newEmailUsedOnMeta"],
-    Facebook: ["accountUrl", "usedTelcoAuth", "emailUsedToCreate", "newEmailUsedOnMeta"],
-    WhatsApp: ["victimPhoneNumberWAHack", "usedTelcoAuthWAHack", "emailUsedToCreateWAHack", "newEmailToRecoverWAHack"],
+// Platform-specific field requirements based on harm type
+export const PLATFORM_HARM_REQUIREMENTS: Record<PlatformSelect, Partial<Record<HarmType, string[]>>> = {
+  Instagram: {
+    Hacked: ["victimUrl", "emailUsedToOpen", "newEmailToRecover"],
+    Impersonation: ["fakeAccountUrls", "realAccountUrl"],
+    NCII: ["nciiUrls", "victimUrlOrPhone"],
+    Fraud: ["fraudEvidenceUrl", "victimUrlOrPhone"],
   },
-  Impersonation: {
-    Instagram: ["realAccountUrl", "fakeAccountUrls", "proofOfRealAccount"],
-    Messenger: ["realAccountUrl", "fakeAccountUrls", "proofOfRealAccount"],
-    Facebook: ["realAccountUrl", "fakeAccountUrls", "proofOfRealAccount"],
-    WhatsApp: ["usedTelcoAuthWAImpersonation"],
+  Facebook: {
+    Hacked: ["victimUrl", "emailUsedToOpen", "newEmailToRecover"],
+    Impersonation: ["fakeAccountUrls", "realAccountUrl"],
+    NCII: ["nciiUrls", "victimUrlOrPhone"],
+    Fraud: ["fraudEvidenceUrl", "victimUrlOrPhone"],
   },
-  "Fraud/Scam": {
-    Instagram: ["victimAccountUrlFS", "fraudEvidenceFS", "fraudsterIdentifierFS"],
-    Messenger: ["victimAccountUrlFS", "fraudEvidenceFS", "fraudsterIdentifierFS"],
-    Facebook: ["victimAccountUrlFS", "fraudEvidenceFS", "fraudsterIdentifierFS"],
-    WhatsApp: ["victimPhoneNumberWAFS", "fraudEvidenceWAFS", "fraudsterIdentifierWAFS"],
+  Messenger: {
+    Hacked: ["victimUrl", "emailUsedToOpen", "newEmailToRecover"],
+    Impersonation: ["fakeAccountUrls", "realAccountUrl"],
+    NCII: ["nciiUrls", "victimUrlOrPhone"],
+    Fraud: ["fraudEvidenceUrl", "victimUrlOrPhone"],
   },
+  WhatsApp: {
+    Hacked: ["victimPhoneNumber", "victimEmailAddress"],
+    Impersonation: ["victimPhoneNumber", "victimEmailAddress"],
+    NCII: ["victimPhoneNumber", "victimEmailAddress"],
+    Fraud: ["victimPhoneNumber", "victimEmailAddress"],
+  },
+  Twitter: {},
+  LinkedIn: {},
+  Reddit: {},
+  Tumblr: {},
+  WeChat: {},
+  TikTok: {},
+  Other: {},
 }
 
-export const DYNAMIC_FIELD_LABELS: Record<string, string> = {
-  accountUrl: "URL of the account (not the alias)",
-  usedTelcoAuth: "Used Telco to authenticate?",
-  emailUsedToCreate: "Email address used to create the account",
-  newEmailUsedOnMeta: "Brand new email address used on any of the Meta platforms",
-  victimPhoneNumberWAHack: "WhatsApp (phone number) of the victim",
-  usedTelcoAuthWAHack: "Used Telco to authenticate?",
-  emailUsedToCreateWAHack: "Email used to create the account",
-  newEmailToRecoverWAHack: "Brand new email to recover the account",
-  realAccountUrl: "URL of the genuine account (not the alias)",
-  fakeAccountUrls: "URL of the fake account(s) (comma-separated if multiple)",
-  proofOfRealAccount: "Evidence of the veracity of the real account (e.g., website, article, ID URL)",
-  usedTelcoAuthWAImpersonation: "Used Telco to authenticate?",
-  victimAccountUrlFS: "URL of the victim's account (not the alias)",
-  fraudEvidenceFS: "Evidence of fraud (screenshot URL; evidence of impact URL)",
-  fraudsterIdentifierFS: "If possible, URL or number of fraudster",
-  victimPhoneNumberWAFS: "WhatsApp (phone number) of the victim",
-  fraudEvidenceWAFS: "Evidence of fraud (screenshot URL; evidence of impact URL)",
-  fraudsterIdentifierWAFS: "If possible, URL or number of fraudster",
+// Field labels for platform-specific requirements
+export const PLATFORM_HARM_FIELD_LABELS: Record<string, string> = {
+  victimUrl: "URL(s) of the victim",
+  emailUsedToOpen: "Email used to open the account",
+  newEmailToRecover: "Brand new email to recover the account",
+  fakeAccountUrls: "URL(s) of the fake accounts",
+  realAccountUrl: "URL or User ID of the real account/victim",
+  nciiUrls: "URLs or ID of NCII",
+  victimUrlOrPhone: "URL or phone number of the victim",
+  fraudEvidenceUrl: "URL or objects evidence of fraud",
+  victimPhoneNumber: "Phone number of victim",
+  victimEmailAddress: "Email address of victim",
 }
 
+// Fields that support multiple URLs
+export const MULTI_URL_FIELDS = ["victimUrl", "fakeAccountUrls", "nciiUrls", "fraudEvidenceUrl"]
+
+// Initial form data
 export const initialIncidentFormData: IncidentFormData = {
   firstName: "",
   lastName: "",
   emailAddress: "",
   primaryHarmType: "",
   affectedPlatforms: [],
+  harmTypeGroups: [], // Make sure this starts empty
   platformForDynamicQuestions: "",
   country: "",
   city: "",
@@ -75,9 +94,9 @@ export const initialIncidentFormData: IncidentFormData = {
   incidentClassification: "",
   typeOfSupportProvided: "",
   culturalContext: "",
-  violationReason: "",
   evidenceFiles: [],
-  hackedElsewhere: "",
-  hackedElsewhereDetails: "",
-  crossPlatformDetails: "",
 }
+
+// Dynamic field requirements and labels (legacy - keeping for compatibility)
+export const FIELD_REQUIREMENTS: Record<HarmType, Record<string, string[]>> = {}
+export const DYNAMIC_FIELD_LABELS: Record<string, string> = {}

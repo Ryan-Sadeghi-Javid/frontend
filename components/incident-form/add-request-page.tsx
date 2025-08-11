@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ChangeEvent, type FormEvent } from "react"
+import { useState, type ChangeEvent, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,26 +8,40 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, ArrowRight, User, FileText, MapPin, Plus, Trash2, Shield } from "lucide-react"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { AlertCircle, ArrowRight, User, FileText, Plus, Trash2, Shield } from 'lucide-react'
+import { Checkbox } from "@/components/ui/checkbox"
 
 import {
   HARM_TYPES,
-  PLATFORMS_DYNAMIC,
   ALL_PLATFORMS_SELECT,
   INCIDENT_CLASSIFICATIONS,
-  FIELD_REQUIREMENTS,
-  DYNAMIC_FIELD_LABELS,
   initialIncidentFormData,
+  PLATFORM_HARM_REQUIREMENTS,
+  PLATFORM_HARM_FIELD_LABELS,
+  MULTI_URL_FIELDS,
 } from "@/lib/constants"
 import type {
   IncidentFormData,
   HarmType,
-  PlatformDynamic,
   PlatformSelect,
   IncidentClassification,
   PlatformProfile,
+  HarmTypeGroup,
 } from "@/types"
+
+// -------- helpers to recognize email / phone-like field keys
+const isEmailKey = (k: string) => /email/i.test(k)
+const isPhoneKey = (k: string) => /(phone|mobile|whats ?app)/i.test(k)
+
+const isValidUrl = (url: string): boolean => {
+  try {
+    const urlToTest = url.startsWith("http") ? url : `https://${url}`
+    new URL(urlToTest)
+    return true
+  } catch {
+    return false
+  }
+}
 
 interface AddRequestPageProps {
   onSubmitAccountInfo: (data: IncidentFormData) => void
@@ -36,52 +50,27 @@ interface AddRequestPageProps {
 }
 
 export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform, initialData }: AddRequestPageProps) {
-  const [formData, setFormData] = useState<IncidentFormData>({
-    ...initialIncidentFormData,
-    ...initialData,
+  // Create exactly one group at mount
+  const [formData, setFormData] = useState<IncidentFormData>(() => {
+    const base = { ...initialIncidentFormData, ...initialData }
+    if (!base.harmTypeGroups || base.harmTypeGroups.length === 0) {
+      const first: HarmTypeGroup = {
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        harmType: "",
+        selectedPlatforms: [],
+        platformData: {},
+      }
+      return { ...base, harmTypeGroups: [first] }
+    }
+    return base
   })
-  const [dynamicQuestionKeys, setDynamicQuestionKeys] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  // -----------------------------------------
-  // Dynamic-question keys & extra fields
-  // -----------------------------------------
-  useEffect(() => {
-    // run ONLY when these 2 values change
-    const { primaryHarmType, platformForDynamicQuestions } = formData
-
-    const nextKeys =
-      primaryHarmType && platformForDynamicQuestions
-        ? (FIELD_REQUIREMENTS[primaryHarmType]?.[platformForDynamicQuestions] ?? [])
-        : []
-
-    // update keys if they actually changed
-    setDynamicQuestionKeys((prev) => (JSON.stringify(prev) === JSON.stringify(nextKeys) ? prev : nextKeys))
-
-    // add / prune dynamic fields **once**, not every render
-    setFormData((prev) => {
-      const draft = { ...prev }
-      let changed = false
-
-      // remove fields that are no longer required
-      Object.keys(DYNAMIC_FIELD_LABELS).forEach((k) => {
-        if (!nextKeys.includes(k) && k in draft) {
-          delete draft[k]
-          changed = true
-        }
-      })
-
-      // add missing required fields
-      nextKeys.forEach((k) => {
-        if (!(k in draft)) {
-          draft[k] = ""
-          changed = true
-        }
-      })
-
-      return changed ? draft : prev
-    })
-  }, [formData.primaryHarmType, formData.platformForDynamicQuestions]) // Added formData.platformForDynamicQuestions to dependencies
+  // Last seen contact values (for suggestions)
+  const [lastEmail, setLastEmail] = useState<string | null>(null)
+  const [lastPhone, setLastPhone] = useState<string | null>(null)
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -98,140 +87,258 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFormData((prev) => ({ ...prev, evidenceFiles: Array.from(e.target.files!) }))
-    }
-  }
+      const files = Array.from(e.target.files)
+      const maxFileSize = 10 * 1024 * 1024 // 10MB
+      const maxFiles = 5
 
-  // Platform management functions
-  const addPlatform = () => {
-    setFormData((prev) => ({
-      ...prev,
-      affectedPlatforms: [
-        ...prev.affectedPlatforms,
-        { platform: "" as PlatformSelect, profileUrls: [""], userCount: 1 },
-      ],
-    }))
-  }
-
-  const removePlatform = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      affectedPlatforms: prev.affectedPlatforms.filter((_, i) => i !== index),
-    }))
-  }
-
-  const updatePlatform = (index: number, field: keyof PlatformProfile, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      affectedPlatforms: prev.affectedPlatforms.map((platform, i) =>
-        i === index ? { ...platform, [field]: value } : platform,
-      ),
-    }))
-  }
-
-  const addProfileUrl = (platformIndex: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      affectedPlatforms: prev.affectedPlatforms.map((platform, i) =>
-        i === platformIndex ? { ...platform, profileUrls: [...platform.profileUrls, ""] } : platform,
-      ),
-    }))
-  }
-
-  const removeProfileUrl = (platformIndex: number, urlIndex: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      affectedPlatforms: prev.affectedPlatforms.map((platform, i) =>
-        i === platformIndex
-          ? { ...platform, profileUrls: platform.profileUrls.filter((_, j) => j !== urlIndex) }
-          : platform,
-      ),
-    }))
-  }
-
-  const updateProfileUrl = (platformIndex: number, urlIndex: number, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      affectedPlatforms: prev.affectedPlatforms.map((platform, i) =>
-        i === platformIndex
-          ? {
-              ...platform,
-              profileUrls: platform.profileUrls.map((url, j) => (j === urlIndex ? value : url)),
-            }
-          : platform,
-      ),
-    }))
-  }
-
-  const handleHackedElsewhereChange = (value: "yes" | "no" | "dont_know") => {
-    setFormData((prev) => ({ ...prev, hackedElsewhere: value }))
-
-    if (value === "no") {
-      // Defer to platform channel
-      onDeferToPlatform()
-      return
-    }
-  }
-
-  const validateForm = (): boolean => {
-    const requiredFields: (keyof IncidentFormData)[] = [
-      "firstName",
-      "lastName",
-      "emailAddress",
-      "primaryHarmType",
-      "country",
-      "violationReason",
-    ]
-
-    for (const field of requiredFields) {
-      if (!formData[field]) {
-        let label = (field as string).replace(/([A-Z])/g, " $1").trim()
-        label = label.charAt(0).toUpperCase() + label.slice(1)
-        if (field === "primaryHarmType") label = "Primary Harm Type"
-        if (field === "violationReason") label = "Why is this a violation?"
-        setError(`Please fill in the required field: ${label}.`)
-        return false
+      if (files.length > maxFiles) {
+        setError(`Please select no more than ${maxFiles} files.`)
+        return
       }
+
+      const oversizedFiles = files.filter((file) => file.size > maxFileSize)
+      if (oversizedFiles.length > 0) {
+        setError(`File "${oversizedFiles[0].name}" is too large. Maximum file size is 10MB.`)
+        return
+      }
+
+      setFormData((prev) => ({ ...prev, evidenceFiles: files }))
+      setError(null)
+    }
+  }
+
+  // ---- Harm Type Group Management
+  const addHarmTypeGroup = () => {
+    const newGroup: HarmTypeGroup = {
+      id: typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      harmType: "",
+      selectedPlatforms: [],
+      platformData: {},
+    }
+    setFormData((prev) => ({
+      ...prev,
+      harmTypeGroups: [...prev.harmTypeGroups, newGroup],
+    }))
+  }
+
+  const removeHarmTypeGroup = (groupId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      harmTypeGroups: prev.harmTypeGroups.filter((group) => group.id !== groupId),
+    }))
+  }
+
+  const updateHarmTypeGroup = (groupId: string, updates: Partial<HarmTypeGroup>) => {
+    setFormData((prev) => ({
+      ...prev,
+      harmTypeGroups: prev.harmTypeGroups.map((group) => {
+        if (group.id === groupId) {
+          const updatedGroup = { ...group, ...updates }
+
+          // If harm type changed, reset platform data
+          if (updates.harmType && updates.harmType !== group.harmType) {
+            updatedGroup.platformData = {}
+            updatedGroup.selectedPlatforms.forEach((platform) => {
+              updatedGroup.platformData[platform] = createInitialPlatformData(platform, updates.harmType as HarmType)
+            })
+          }
+
+          // If platforms changed, update platform data
+          if (updates.selectedPlatforms) {
+            const newPlatformData: Record<PlatformSelect, PlatformProfile> = {} as any
+            updates.selectedPlatforms.forEach((platform) => {
+              newPlatformData[platform] =
+                group.platformData[platform] || createInitialPlatformData(platform, group.harmType as HarmType)
+            })
+            updatedGroup.platformData = newPlatformData
+          }
+
+          return updatedGroup
+        }
+        return group
+      }),
+    }))
+  }
+
+  const createInitialPlatformData = (platform: PlatformSelect, harmType: HarmType): PlatformProfile => {
+    const platformData: PlatformProfile = {
+      platform,
+      profileUrls: [], // backend allows empty
+      userCount: 1,
     }
 
-    // Validate affected platforms
-    if (formData.affectedPlatforms.length === 0) {
-      setError("Please add at least one affected platform.")
+    const requiredFields = PLATFORM_HARM_REQUIREMENTS[platform]?.[harmType] || []
+    requiredFields.forEach((fieldKey) => {
+      if (MULTI_URL_FIELDS.includes(fieldKey)) {
+        platformData[fieldKey] = [""]
+      } else {
+        platformData[fieldKey] = ""
+      }
+    })
+
+    return platformData
+  }
+
+  const updatePlatformData = (groupId: string, platform: PlatformSelect, updates: Partial<PlatformProfile>) => {
+    setFormData((prev) => ({
+      ...prev,
+      harmTypeGroups: prev.harmTypeGroups.map((group) => {
+        if (group.id === groupId) {
+          return {
+            ...group,
+            platformData: {
+              ...group.platformData,
+              [platform]: {
+                ...group.platformData[platform],
+                ...updates,
+              },
+            },
+          }
+        }
+        return group
+      }),
+    }))
+
+    // record latest email/phone
+    Object.entries(updates).forEach(([key, val]) => {
+      if (typeof val === "string" && val.trim()) {
+        if (isEmailKey(key)) setLastEmail(val.trim())
+        if (isPhoneKey(key)) setLastPhone(val.trim())
+      }
+    })
+  }
+
+  // Multi-URL management
+  const updatePlatformMultiUrlField = (groupId: string, platform: PlatformSelect, fieldKey: string, urlIndex: number, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      harmTypeGroups: prev.harmTypeGroups.map((group) => {
+        if (group.id === groupId) {
+          const currentUrls = (group.platformData[platform]?.[fieldKey] as string[]) || [""]
+          const newUrls = currentUrls.map((url: string, j: number) => (j === urlIndex ? value : url))
+          return {
+            ...group,
+            platformData: {
+              ...group.platformData,
+              [platform]: {
+                ...group.platformData[platform],
+                [fieldKey]: newUrls,
+              },
+            },
+          }
+        }
+        return group
+      }),
+    }))
+  }
+
+  const addUrlToPlatformField = (groupId: string, platform: PlatformSelect, fieldKey: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      harmTypeGroups: prev.harmTypeGroups.map((group) => {
+        if (group.id === groupId) {
+          const currentUrls = (group.platformData[platform]?.[fieldKey] as string[]) || [""]
+          return {
+            ...group,
+            platformData: {
+              ...group.platformData,
+              [platform]: {
+                ...group.platformData[platform],
+                [fieldKey]: [...currentUrls, ""],
+              },
+            },
+          }
+        }
+        return group
+      }),
+    }))
+  }
+
+  const removeUrlFromPlatformField = (groupId: string, platform: PlatformSelect, fieldKey: string, urlIndex: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      harmTypeGroups: prev.harmTypeGroups.map((group) => {
+        if (group.id === groupId) {
+          const currentUrls = (group.platformData[platform]?.[fieldKey] as string[]) || [""]
+          if (currentUrls.length > 1) {
+            return {
+              ...group,
+              platformData: {
+                ...group.platformData,
+                [platform]: {
+                  ...group.platformData[platform],
+                  [fieldKey]: currentUrls.filter((_: string, j: number) => j !== urlIndex),
+                },
+              },
+            }
+          }
+        }
+        return group
+      }),
+    }))
+  }
+
+  // ---- Validation & submit
+  const validateForm = (): boolean => {
+    const requiredFields: (keyof IncidentFormData)[] = ["firstName", "lastName", "emailAddress", "country"]
+
+    if (formData.harmTypeGroups.length === 0) {
+      setError("Please add at least one harm type and platform combination.")
       return false
     }
 
-    for (const platform of formData.affectedPlatforms) {
-      if (!platform.platform) {
-        setError("Please select a platform for all affected platforms.")
-        return false
-      }
-      if (platform.profileUrls.some((url) => !url.trim())) {
-        setError("Please fill in all profile URLs.")
-        return false
-      }
-      if (platform.userCount < 1) {
-        setError("User count must be at least 1.")
-        return false
-      }
-    }
+    for (let i = 0; i < formData.harmTypeGroups.length; i++) {
+      const group = formData.harmTypeGroups[i]
 
-    // Validate hacking-specific questions
-    if (formData.primaryHarmType === "Hacked Account Take over") {
-      if (!formData.hackedElsewhere) {
-        setError("Please answer if you've been hacked elsewhere.")
+      if (!group.harmType) {
+        setError(`Please select a harm type for Group ${i + 1}.`)
         return false
       }
-      if (formData.hackedElsewhere === "yes" && !formData.hackedElsewhereDetails?.trim()) {
-        setError("Please provide details about being hacked elsewhere.")
-        return false
-      }
-    }
 
-    // Validate dynamic questions
-    for (const key of dynamicQuestionKeys) {
-      if (!formData[key] && formData[key] !== false) {
-        setError(`Please fill in: ${DYNAMIC_FIELD_LABELS[key] || key}.`)
+      if (group.selectedPlatforms.length === 0) {
+        setError(`Please select at least one platform for Group ${i + 1}.`)
         return false
+      }
+
+      for (const platform of group.selectedPlatforms) {
+        const platformData = group.platformData[platform]
+
+        if (!platformData) {
+          setError(`Missing data for ${platform} in Group ${i + 1}.`)
+          return false
+        }
+
+        if (platformData.userCount < 1) {
+          setError(`User count must be at least 1 for ${platform} in Group ${i + 1}.`)
+          return false
+        }
+
+        const requiredFields = PLATFORM_HARM_REQUIREMENTS[platform]?.[group.harmType as HarmType] || []
+        for (const fieldKey of requiredFields) {
+          if (MULTI_URL_FIELDS.includes(fieldKey)) {
+            const urls = (platformData as any)[fieldKey] || []
+            if (!Array.isArray(urls) || urls.length === 0) {
+              const fieldLabel = PLATFORM_HARM_FIELD_LABELS[fieldKey] || fieldKey
+              setError(`Please fill in at least one "${fieldLabel}" for ${platform} in Group ${i + 1}.`)
+              return false
+            }
+            for (let k = 0; k < urls.length; k++) {
+              if (!urls[k] || urls[k].trim() === "") {
+                const fieldLabel = PLATFORM_HARM_FIELD_LABELS[fieldKey] || fieldKey
+                setError(`Please fill in "${fieldLabel}" entry ${k + 1} for ${platform} in Group ${i + 1}.`)
+                return false
+              }
+            }
+          } else {
+            if (!(platformData as any)[fieldKey] || String((platformData as any)[fieldKey]).trim() === "") {
+              const fieldLabel = PLATFORM_HARM_FIELD_LABELS[fieldKey] || fieldKey
+              setError(`Please fill in "${fieldLabel}" for ${platform} in Group ${i + 1}.`)
+              return false
+            }
+          }
+        }
       }
     }
 
@@ -245,13 +352,7 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
     onSubmitAccountInfo(formData)
   }
 
-  // Initialize with one platform if empty
-  useEffect(() => {
-    if (formData.affectedPlatforms.length === 0) {
-      addPlatform()
-    }
-  }, [])
-
+  // ---- UI
   return (
     <div className="max-w-4xl mx-auto">
       <Card className="shadow-lg border-0 bg-white">
@@ -263,12 +364,12 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
             Account & Incident Information
           </CardTitle>
           <CardDescription className="text-gray-600 text-base">
-            Please provide all necessary details. You can add multiple platforms and profiles affected.
+            Please provide all necessary details. You can add multiple harm types and platforms affected.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-10">
-            {/* Submitter Information Section */}
+            {/* Submitter Info */}
             <section className="space-y-6">
               <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
                 <div className="bg-blue-100 p-2 rounded-lg">
@@ -320,320 +421,248 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
               </div>
             </section>
 
-            {/* Incident Details Section */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-                <div className="bg-red-100 p-2 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">Incident Details</h3>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="primaryHarmType" className="text-sm font-medium text-gray-700">
-                  Primary Harm Type <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  name="primaryHarmType"
-                  value={formData.primaryHarmType}
-                  onValueChange={(value) => handleSelectChange("primaryHarmType", value as HarmType)}
-                  required
-                >
-                  <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white">
-                    <SelectValue placeholder="Select harm type" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg">
-                    {HARM_TYPES.map((type) => (
-                      <SelectItem key={type} value={type} className="hover:bg-blue-50">
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Hacking-specific questions */}
-              {formData.primaryHarmType === "Hacked Account Take over" && (
-                <div className="bg-orange-50 p-6 rounded-xl border border-orange-200">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="bg-orange-100 p-2 rounded-lg">
-                      <Shield className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <h4 className="text-lg font-semibold text-orange-900">Hacking Assessment</h4>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">
-                        Do you know if you've been hacked elsewhere? <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.hackedElsewhere || ""}
-                        onValueChange={handleHackedElsewhereChange}
-                        required
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white">
-                          <SelectValue placeholder="Select an option" />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg">
-                          <SelectItem value="yes" className="hover:bg-blue-50">
-                            Yes, I've been hacked on other platforms
-                          </SelectItem>
-                          <SelectItem value="no" className="hover:bg-blue-50">
-                            No, this is the only platform
-                          </SelectItem>
-                          <SelectItem value="dont_know" className="hover:bg-blue-50">
-                            I don't know
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {formData.hackedElsewhere === "yes" && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="hackedElsewhereDetails" className="text-sm font-medium text-gray-700">
-                            Which other platforms have been affected? <span className="text-red-500">*</span>
-                          </Label>
-                          <Textarea
-                            id="hackedElsewhereDetails"
-                            name="hackedElsewhereDetails"
-                            value={formData.hackedElsewhereDetails || ""}
-                            onChange={handleChange}
-                            rows={3}
-                            placeholder="Please list the other platforms and any relevant details..."
-                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="crossPlatformDetails" className="text-sm font-medium text-gray-700">
-                            Cross-platform details (Optional)
-                          </Label>
-                          <Textarea
-                            id="crossPlatformDetails"
-                            name="crossPlatformDetails"
-                            value={formData.crossPlatformDetails || ""}
-                            onChange={handleChange}
-                            rows={3}
-                            placeholder="Any additional information about how the attacks are connected..."
-                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </section>
-
-            {/* Affected Platforms Section */}
+            {/* Harm Types & Platforms */}
             <section className="space-y-6">
               <div className="flex items-center justify-between pb-3 border-b border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="bg-purple-100 p-2 rounded-lg">
-                    <MapPin className="h-5 w-5 text-purple-600" />
+                  <div className="bg-red-100 p-2 rounded-lg">
+                    <Shield className="h-5 w-5 text-red-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900">Affected Platforms & Profiles</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">Harm Types & Affected Platforms</h3>
                 </div>
                 <Button
                   type="button"
-                  onClick={addPlatform}
+                  onClick={addHarmTypeGroup}
                   variant="outline"
                   size="sm"
-                  className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                  className="border-blue-300 text-blue-600 hover:bg-blue-50 bg-transparent"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Platform
+                  Add Harm Type
                 </Button>
               </div>
 
-              {formData.affectedPlatforms.map((platform, platformIndex) => (
-                <div key={platformIndex} className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-medium text-gray-900">Platform {platformIndex + 1}</h4>
-                    {formData.affectedPlatforms.length > 1 && (
+              {formData.harmTypeGroups.map((group, groupIndex) => (
+                <div key={group.id} className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-lg font-semibold text-gray-900">Harm Type Group {groupIndex + 1}</h4>
+                    {formData.harmTypeGroups.length > 1 && (
                       <Button
                         type="button"
-                        onClick={() => removePlatform(platformIndex)}
+                        onClick={() => removeHarmTypeGroup(group.id)}
                         variant="outline"
                         size="sm"
                         className="border-red-300 text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Remove
+                        Remove Group
                       </Button>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* Harm Type */}
+                  <div className="space-y-4 mb-6">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-700">
-                        Platform <span className="text-red-500">*</span>
+                        Harm Type <span className="text-red-500">*</span>
                       </Label>
                       <Select
-                        value={platform.platform}
-                        onValueChange={(value) => updatePlatform(platformIndex, "platform", value as PlatformSelect)}
+                        value={group.harmType}
+                        onValueChange={(value) => updateHarmTypeGroup(group.id, { harmType: value as HarmType })}
                         required
                       >
                         <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white">
-                          <SelectValue placeholder="Select platform" />
+                          <SelectValue placeholder="Select harm type" />
                         </SelectTrigger>
                         <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg">
-                          {ALL_PLATFORMS_SELECT.map((p) => (
-                            <SelectItem key={p} value={p} className="hover:bg-blue-50">
-                              {p}
+                          {HARM_TYPES.map((type) => (
+                            <SelectItem key={type} value={type} className="hover:bg-blue-50">
+                              {type}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">
-                        Number of Users Affected <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={platform.userCount}
-                        onChange={(e) =>
-                          updatePlatform(platformIndex, "userCount", Number.parseInt(e.target.value) || 1)
-                        }
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-gray-700">
-                        Profile URLs <span className="text-red-500">*</span>
-                      </Label>
-                      <Button
-                        type="button"
-                        onClick={() => addProfileUrl(platformIndex)}
-                        variant="outline"
-                        size="sm"
-                        className="border-green-300 text-green-600 hover:bg-green-50"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add URL
-                      </Button>
-                    </div>
-
-                    {platform.profileUrls.map((url, urlIndex) => (
-                      <div key={urlIndex} className="flex gap-2">
-                        <Input
-                          value={url}
-                          onChange={(e) => updateProfileUrl(platformIndex, urlIndex, e.target.value)}
-                          placeholder={`Profile URL ${urlIndex + 1} (e.g., instagram.com/username)`}
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          required
-                        />
-                        {platform.profileUrls.length > 1 && (
-                          <Button
-                            type="button"
-                            onClick={() => removeProfileUrl(platformIndex, urlIndex)}
-                            variant="outline"
-                            size="sm"
-                            className="border-red-300 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                    {/* Platforms */}
+                    {group.harmType && (
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium text-gray-700">
+                          Affected Platforms <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {ALL_PLATFORMS_SELECT.map((platform) => (
+                            <div key={platform} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${group.id}-${platform}`}
+                                checked={group.selectedPlatforms.includes(platform)}
+                                onCheckedChange={(checked) => {
+                                  const newPlatforms = checked
+                                    ? [...group.selectedPlatforms, platform]
+                                    : group.selectedPlatforms.filter((p) => p !== platform)
+                                  updateHarmTypeGroup(group.id, { selectedPlatforms: newPlatforms })
+                                }}
+                              />
+                              <Label
+                                htmlFor={`${group.id}-${platform}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                {platform}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
+                    )}
                   </div>
+
+                  {/* Platform-Specific Questions */}
+                  {group.harmType && group.selectedPlatforms.length > 0 && (
+                    <div className="space-y-6">
+                      <h5 className="text-md font-semibold text-gray-900 border-b border-gray-300 pb-2">
+                        Platform Details for {group.harmType}
+                      </h5>
+
+                      {group.selectedPlatforms.map((platform) => {
+                        const platformData = group.platformData[platform]
+                        const requiredFields = PLATFORM_HARM_REQUIREMENTS[platform]?.[group.harmType as HarmType] || []
+
+                        return (
+                          <div key={platform} className="bg-white p-5 rounded-lg border border-gray-200">
+                            <h6 className="text-md font-medium text-gray-900 mb-4 flex items-center gap-2">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              {platform}
+                            </h6>
+
+                            {requiredFields.length > 0 && (
+                              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <h6 className="text-sm font-semibold text-blue-900">
+                                  Required Information for {group.harmType} on {platform}
+                                </h6>
+
+                                {requiredFields.map((fieldKey) => {
+                                  const currentValue = String((platformData as any)?.[fieldKey] ?? "")
+                                  // Only suggest when empty
+                                  const suggestion =
+                                    (!currentValue.trim() && isEmailKey(fieldKey) && lastEmail) ? lastEmail :
+                                    (!currentValue.trim() && isPhoneKey(fieldKey) && lastPhone) ? lastPhone :
+                                    null
+
+                                  return (
+                                    <div key={fieldKey} className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-medium text-gray-700">
+                                          {PLATFORM_HARM_FIELD_LABELS[fieldKey] || fieldKey}{" "}
+                                          <span className="text-red-500">*</span>
+                                        </Label>
+                                        {MULTI_URL_FIELDS.includes(fieldKey) && (
+                                          <Button
+                                            type="button"
+                                            onClick={() => addUrlToPlatformField(group.id, platform, fieldKey)}
+                                            variant="outline"
+                                            size="sm"
+                                            className="border-green-300 text-green-600 hover:bg-green-50"
+                                          >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add URL
+                                          </Button>
+                                        )}
+                                      </div>
+
+                                      {MULTI_URL_FIELDS.includes(fieldKey) ? (
+                                        // Multi-URL field
+                                        <div className="space-y-2">
+                                          {(platformData?.[fieldKey] as string[] || [""]).map((url: string, urlIndex: number) => (
+                                            <div key={urlIndex} className="flex gap-2">
+                                              <Input
+                                                value={url}
+                                                onChange={(e) =>
+                                                  updatePlatformMultiUrlField(
+                                                    group.id,
+                                                    platform,
+                                                    fieldKey,
+                                                    urlIndex,
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                placeholder={`${PLATFORM_HARM_FIELD_LABELS[fieldKey]} ${urlIndex + 1}`}
+                                                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                                required
+                                              />
+                                              {((platformData?.[fieldKey] as string[]) || []).length > 1 && (
+                                                <Button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    removeUrlFromPlatformField(group.id, platform, fieldKey, urlIndex)
+                                                  }
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="border-red-300 text-red-600 hover:bg-red-50"
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        // Single-value with inline ghost suggestion + Tab to accept
+                                        // Single-value with inline ghost suggestion + Tab to accept (no overlap)
+                                        <div className="relative">
+                                          <Input
+                                            value={currentValue}
+                                            onChange={(e) =>
+                                              updatePlatformData(group.id, platform, { [fieldKey]: e.target.value } as any)
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Tab" && suggestion) {
+                                                e.preventDefault()
+                                                updatePlatformData(group.id, platform, { [fieldKey]: suggestion } as any)
+                                              }
+                                            }}
+                                            // hide placeholder when suggestion is shown
+                                            placeholder={suggestion ? "" : (PLATFORM_HARM_FIELD_LABELS[fieldKey] || fieldKey)}
+                                            // add right padding only when the Tab badge is visible
+                                            className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${suggestion ? "pr-16" : ""}`}
+                                            required
+                                          />
+
+                                          {suggestion && (
+                                            <>
+                                              {/* ghost text on the left */}
+                                              <span
+                                                className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400 select-none truncate"
+                                                aria-hidden="true"
+                                              >
+                                                {suggestion}
+                                              </span>
+                                              {/* tiny Tab badge on the right */}
+                                              <kbd
+                                                className="pointer-events-none absolute inset-y-0 right-3 my-auto hidden sm:inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium bg-gray-50 text-gray-500"
+                                                aria-hidden="true"
+                                              >
+                                                Tab
+                                              </kbd>
+                                            </>
+                                          )}
+                                        </div>
+
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </section>
 
-            {/* Platform for Dynamic Questions */}
-            {formData.primaryHarmType && (
-              <section className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="platformForDynamicQuestions" className="text-sm font-medium text-gray-700">
-                    Primary Platform for Specific Questions <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    name="platformForDynamicQuestions"
-                    value={formData.platformForDynamicQuestions}
-                    onValueChange={(value) =>
-                      handleSelectChange("platformForDynamicQuestions", value as PlatformDynamic)
-                    }
-                    required
-                  >
-                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white">
-                      <SelectValue placeholder="Select primary platform for detailed questions" />
-                    </SelectTrigger>
-                    <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg max-h-60 overflow-y-auto">
-                      {PLATFORMS_DYNAMIC.map((p) => (
-                        <SelectItem key={p} value={p} className="hover:bg-blue-50">
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500">
-                    Select the main platform for detailed technical questions about this incident.
-                  </p>
-                </div>
-              </section>
-            )}
-
-            {/* Dynamic Questions Section */}
-            {dynamicQuestionKeys.length > 0 && (
-              <section className="space-y-6 bg-blue-50 p-6 rounded-xl border border-blue-200">
-                <h3 className="text-lg font-semibold text-blue-900">
-                  Specific Questions for {formData.primaryHarmType} on {formData.platformForDynamicQuestions}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {dynamicQuestionKeys.map((key) => (
-                    <div key={key} className="space-y-2">
-                      <Label htmlFor={key} className="text-sm font-medium text-gray-700">
-                        {DYNAMIC_FIELD_LABELS[key] || key} <span className="text-red-500">*</span>
-                      </Label>
-                      {key.toLowerCase().includes("telco") || key.toLowerCase().includes("authenticate") ? (
-                        <Select
-                          name={key}
-                          value={formData[key] || ""}
-                          onValueChange={(value) => handleSelectChange(key, value)}
-                          required
-                        >
-                          <SelectTrigger
-                            id={key}
-                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
-                          >
-                            <SelectValue placeholder="Select Yes or No" />
-                          </SelectTrigger>
-                          <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg">
-                            <SelectItem value="Yes" className="hover:bg-blue-50">
-                              Yes
-                            </SelectItem>
-                            <SelectItem value="No" className="hover:bg-blue-50">
-                              No
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          id={key}
-                          name={key}
-                          value={formData[key] || ""}
-                          onChange={handleChange}
-                          required
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Additional Case Information Section */}
+            {/* Additional Info */}
             <section className="space-y-6">
               <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
                 <div className="bg-green-100 p-2 rounded-lg">
@@ -683,7 +712,6 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
                 />
               </div>
 
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="typeOfSupportProvided" className="text-sm font-medium text-gray-700">
@@ -730,7 +758,7 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
 
               <div className="space-y-2">
                 <Label htmlFor="evidenceFiles" className="text-sm font-medium text-gray-700">
-                  Evidence (Optional, max 5 files)
+                  Additional Evidence (Optional, max 5 files)
                 </Label>
                 <Input
                   id="evidenceFiles"
