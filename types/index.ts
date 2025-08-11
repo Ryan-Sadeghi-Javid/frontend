@@ -13,6 +13,8 @@ export type PlatformSelect =
   | "TikTok"
   | "Other"
 
+  export type PlatformDynamic = "Instagram" | "Facebook" | "Messenger" | "WhatsApp";
+
 export type IncidentClassification = 
   | "Sale of illegal goods"
   | "Harassment"
