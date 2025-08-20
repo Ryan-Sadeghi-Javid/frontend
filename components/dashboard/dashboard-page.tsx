@@ -19,23 +19,22 @@ import {
   PieChart,
   Pie,
   Cell,
-  Area,
-  AreaChart,
 } from "recharts"
 import {
   TrendingUp,
   TrendingDown,
+  Clock,
   Shield,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   Activity,
   Calendar,
-  Target,
   Zap,
   Network,
   Globe,
   Link,
+  ArrowLeft,
 } from "lucide-react"
 
 // Enhanced sample data with cross-platform focus
@@ -45,85 +44,115 @@ const velocityData = [
     avgReportTime: 2.3,
     avgResolutionTime: 18.5,
     totalReports: 1247,
-    crossPlatformIncidents: 892,
   },
   {
     platform: "Facebook",
     avgReportTime: 1.8,
     avgResolutionTime: 22.1,
     totalReports: 2156,
-    crossPlatformIncidents: 1534,
   },
-  { platform: "WhatsApp", avgReportTime: 3.1, avgResolutionTime: 15.2, totalReports: 892, crossPlatformIncidents: 645 },
+  {
+    platform: "WhatsApp",
+    avgReportTime: 3.1,
+    avgResolutionTime: 15.2,
+    totalReports: 892,
+  },
   {
     platform: "Messenger",
     avgReportTime: 2.7,
     avgResolutionTime: 19.8,
     totalReports: 634,
-    crossPlatformIncidents: 456,
   },
   {
     platform: "Twitter",
     avgReportTime: 1.5,
     avgResolutionTime: 31.2,
     totalReports: 1823,
-    crossPlatformIncidents: 1245,
   },
-  { platform: "TikTok", avgReportTime: 4.2, avgResolutionTime: 28.7, totalReports: 1456, crossPlatformIncidents: 987 },
-]
-
-// Cross-platform impact data
-const crossPlatformData = [
-  { platforms: "1 Platform", incidents: 2847, percentage: 34.2 },
-  { platforms: "2 Platforms", incidents: 3156, percentage: 37.9 },
-  { platforms: "3 Platforms", incidents: 1534, percentage: 18.4 },
-  { platforms: "4+ Platforms", incidents: 789, percentage: 9.5 },
-]
-
-// Platform interconnection data
-const platformConnections = [
-  { source: "Instagram", target: "Facebook", incidents: 1245, strength: "high" },
-  { source: "Facebook", target: "Messenger", incidents: 987, strength: "high" },
-  { source: "Instagram", target: "WhatsApp", incidents: 756, strength: "medium" },
-  { source: "Twitter", target: "Instagram", incidents: 634, strength: "medium" },
-  { source: "TikTok", target: "Instagram", incidents: 523, strength: "medium" },
-  { source: "WhatsApp", target: "Messenger", incidents: 445, strength: "low" },
-]
-
-// Multi-platform attack patterns
-const attackPatterns = [
   {
-    pattern: "Account Takeover Chain",
-    platforms: ["Instagram", "Facebook", "WhatsApp"],
-    incidents: 456,
-    trend: "increasing",
+    platform: "TikTok",
+    avgReportTime: 4.2,
+    avgResolutionTime: 28.7,
+    totalReports: 1456,
   },
-  { pattern: "Impersonation Network", platforms: ["Instagram", "Twitter", "TikTok"], incidents: 334, trend: "stable" },
-  { pattern: "Fraud Campaign", platforms: ["Facebook", "WhatsApp", "Messenger"], incidents: 278, trend: "decreasing" },
+]
+
+const platformDistributionData = [
   {
-    pattern: "Coordinated Harassment",
-    platforms: ["Twitter", "Instagram", "TikTok", "Facebook"],
-    incidents: 189,
-    trend: "increasing",
+    name: "2 Platforms",
+    value: 3245,
+    percentage: 39.7,
+    color: "#f97316",
+    harmTypes: [
+      { name: "Fraud/Scam", incidents: 1298, color: "#8b5cf6" },
+      { name: "Impersonation", incidents: 974, color: "#f97316" },
+      { name: "Hacked Account", incidents: 649, color: "#ef4444" },
+      { name: "Harassment", incidents: 324, color: "#06b6d4" },
+    ],
   },
+  {
+    name: "3 Platforms",
+    value: 1634,
+    percentage: 20.0,
+    color: "#ef4444",
+    harmTypes: [
+      { name: "Hacked Account", incidents: 653, color: "#ef4444" },
+      { name: "Fraud/Scam", incidents: 490, color: "#8b5cf6" },
+      { name: "Impersonation", incidents: 327, color: "#f97316" },
+      { name: "NCII", incidents: 164, color: "#ec4899" },
+    ],
+  },
+  {
+    name: "4+ Platforms",
+    value: 501,
+    percentage: 6.1,
+    color: "#dc2626",
+    harmTypes: [
+      { name: "Hacked Account", incidents: 200, color: "#ef4444" },
+      { name: "Fraud/Scam", incidents: 150, color: "#8b5cf6" },
+      { name: "Harassment", incidents: 100, color: "#06b6d4" },
+      { name: "Impersonation", incidents: 51, color: "#f97316" },
+    ],
+  },
+  {
+    name: "5+ Platforms",
+    value: 2792,
+    percentage: 34.2,
+    color: "#94a3b8",
+    harmTypes: [
+      { name: "Fraud/Scam", incidents: 1117, color: "#8b5cf6" },
+      { name: "Impersonation", incidents: 838, color: "#f97316" },
+      { name: "Hacked Account", incidents: 558, color: "#ef4444" },
+      { name: "Harassment", incidents: 279, color: "#06b6d4" },
+      { name: "Hate Speech", incidents: 445, color: "#84cc16" },
+      { name: "NCII (Non-consensual)", incidents: 234, color: "#ec4899" },
+    ],
+  },
+]
+
+const multiPlatformAttackPatterns = [
+  { type: "Coordinated Impersonation", incidents: 1456, platforms: 2.8, trend: "+23%" },
+  { type: "Multi-Platform Fraud", incidents: 1234, platforms: 3.2, trend: "+18%" },
+  { type: "Account Takeover Chain", incidents: 987, platforms: 2.4, trend: "+31%" },
+  { type: "Harassment Campaign", incidents: 743, platforms: 2.9, trend: "+12%" },
 ]
 
 const harmTypesData = [
-  { name: "Hacked Account Takeover", known: 1247, inferred: 234, color: "#ef4444", crossPlatform: 89 },
-  { name: "Impersonation", known: 892, inferred: 156, color: "#f97316", crossPlatform: 76 },
-  { name: "Fraud/Scam", known: 2156, inferred: 445, color: "#8b5cf6", crossPlatform: 82 },
-  { name: "Harassment", known: 634, inferred: 89, color: "#06b6d4", crossPlatform: 67 },
-  { name: "Hate Speech", known: 445, inferred: 67, color: "#84cc16", crossPlatform: 45 },
-  { name: "NCII (Non-consensual)", known: 234, inferred: 78, color: "#ec4899", crossPlatform: 91 },
+  { name: "Hacked Account Takeover", known: 1247, inferred: 234, color: "#ef4444" },
+  { name: "Impersonation", known: 892, inferred: 156, color: "#f97316" },
+  { name: "Fraud/Scam", known: 2156, inferred: 445, color: "#8b5cf6" },
+  { name: "Harassment", known: 634, inferred: 89, color: "#06b6d4" },
+  { name: "Hate Speech", known: 445, inferred: 67, color: "#84cc16" },
+  { name: "NCII (Non-consensual)", known: 234, inferred: 78, color: "#ec4899" },
 ]
 
 const trendsData = [
-  { month: "Jan", reports: 1200, resolved: 1150, dsaCompliant: 1100, tidCompliant: 1140, crossPlatform: 756 },
-  { month: "Feb", reports: 1350, resolved: 1280, dsaCompliant: 1220, tidCompliant: 1270, crossPlatform: 891 },
-  { month: "Mar", reports: 1180, resolved: 1120, dsaCompliant: 1050, tidCompliant: 1110, crossPlatform: 826 },
-  { month: "Apr", reports: 1420, resolved: 1380, dsaCompliant: 1300, tidCompliant: 1360, crossPlatform: 994 },
-  { month: "May", reports: 1650, resolved: 1590, dsaCompliant: 1480, tidCompliant: 1570, crossPlatform: 1155 },
-  { month: "Jun", reports: 1890, resolved: 1820, dsaCompliant: 1720, tidCompliant: 1800, crossPlatform: 1323 },
+  { month: "Jan", reports: 1200, resolved: 1150, dsaCompliant: 1100, tidCompliant: 1140 },
+  { month: "Feb", reports: 1350, resolved: 1280, dsaCompliant: 1220, tidCompliant: 1270 },
+  { month: "Mar", reports: 1180, resolved: 1120, dsaCompliant: 1050, tidCompliant: 1110 },
+  { month: "Apr", reports: 1420, resolved: 1380, dsaCompliant: 1300, tidCompliant: 1360 },
+  { month: "May", reports: 1650, resolved: 1590, dsaCompliant: 1480, tidCompliant: 1570 },
+  { month: "Jun", reports: 1890, resolved: 1820, dsaCompliant: 1720, tidCompliant: 1800 },
 ]
 
 const dsaComplianceData = [
@@ -141,6 +170,22 @@ const tidComplianceData = [
   { platform: "TikTok", within24h: 76, total: 100, percentage: 76 },
 ]
 
+const platformConnectionData = [
+  { platforms: "Instagram & Facebook", incidents: 1500, strength: 85 },
+  { platforms: "Instagram & WhatsApp", incidents: 1200, strength: 75 },
+  { platforms: "Facebook & Twitter", incidents: 1000, strength: 65 },
+  { platforms: "WhatsApp & TikTok", incidents: 800, strength: 55 },
+]
+
+const crossPlatformRemediationData = [
+  { month: "Jan", avgRemediationHours: 28.5, multiPlatformIncidents: 1200 },
+  { month: "Feb", avgRemediationHours: 26.8, multiPlatformIncidents: 1350 },
+  { month: "Mar", avgRemediationHours: 24.2, multiPlatformIncidents: 1180 },
+  { month: "Apr", avgRemediationHours: 22.1, multiPlatformIncidents: 1420 },
+  { month: "May", avgRemediationHours: 19.8, multiPlatformIncidents: 1650 },
+  { month: "Jun", avgRemediationHours: 18.3, multiPlatformIncidents: 1890 },
+]
+
 const getComplianceColor = (percentage: number) => {
   if (percentage >= 90) return "text-green-600 bg-green-50"
   if (percentage >= 75) return "text-yellow-600 bg-yellow-50"
@@ -153,29 +198,17 @@ const getComplianceIcon = (percentage: number) => {
   return <XCircle className="h-4 w-4" />
 }
 
-const getTrendIcon = (trend: string) => {
-  switch (trend) {
-    case "increasing":
-      return <TrendingUp className="h-4 w-4 text-red-600" />
-    case "decreasing":
-      return <TrendingDown className="h-4 w-4 text-green-600" />
-    default:
-      return <Activity className="h-4 w-4 text-gray-600" />
-  }
-}
-
 export default function DashboardPage() {
   const [selectedTimeframe, setSelectedTimeframe] = useState("6months")
+  const [selectedPlatformGroup, setSelectedPlatformGroup] = useState<any>(null)
 
   const totalReports = velocityData.reduce((sum, item) => sum + item.totalReports, 0)
-  const totalCrossPlatformIncidents = velocityData.reduce((sum, item) => sum + item.crossPlatformIncidents, 0)
-  const crossPlatformPercentage = ((totalCrossPlatformIncidents / totalReports) * 100).toFixed(1)
-  const avgPlatformsPerIncident = (
-    crossPlatformData.reduce((sum, item) => {
-      const platformCount = item.platforms === "4+ Platforms" ? 4 : Number.parseInt(item.platforms)
-      return sum + platformCount * item.incidents
-    }, 0) / crossPlatformData.reduce((sum, item) => sum + item.incidents, 0)
-  ).toFixed(1)
+  const avgPlatformsPerIncident =
+    platformDistributionData.reduce((sum, item, index) => {
+      const multiplier =
+        item.name === "2 Platforms" ? 2 : item.name === "3 Platforms" ? 3 : item.name === "4+ Platforms" ? 4 : 5
+      return sum + item.value * multiplier
+    }, 0) / platformDistributionData.reduce((sum, item) => sum + item.value, 0)
 
   const avgResolutionTime = velocityData.reduce((sum, item) => sum + item.avgResolutionTime, 0) / velocityData.length
   const overallDSACompliance =
@@ -183,14 +216,18 @@ export default function DashboardPage() {
   const overallTIDCompliance =
     tidComplianceData.reduce((sum, item) => sum + item.percentage, 0) / tidComplianceData.length
 
+  const handlePieClick = (data: any) => {
+    setSelectedPlatformGroup(data)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Cross-Platform Impact Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Multi-Platform Incident Dashboard</h1>
           <p className="text-gray-600 mt-1">
-            Monitor incidents spanning multiple platforms and their regulatory compliance
+            Monitor coordinated incidents across multiple platforms and regulatory compliance
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -204,8 +241,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Enhanced Key Metrics with Cross-Platform Focus */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* Key Metrics - Enhanced with Cross-Platform Focus */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -224,39 +261,19 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-orange-200 bg-orange-50">
+        <Card className="border-2 border-orange-200 bg-orange-50/30">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-700">Cross-Platform Impact</p>
-                <p className="text-3xl font-bold text-orange-900">{crossPlatformPercentage}%</p>
+                <p className="text-sm font-medium text-orange-700">Avg Platforms/Incident</p>
+                <p className="text-3xl font-bold text-orange-900">{avgPlatformsPerIncident.toFixed(1)}</p>
                 <div className="flex items-center mt-2">
-                  <Network className="h-4 w-4 text-orange-600 mr-1" />
-                  <span className="text-sm text-orange-600">
-                    {totalCrossPlatformIncidents.toLocaleString()} incidents
-                  </span>
+                  <Globe className="h-4 w-4 text-orange-600 mr-1" />
+                  <span className="text-sm text-orange-600">Multi-platform attacks</span>
                 </div>
               </div>
               <div className="bg-orange-200 p-3 rounded-full">
-                <Network className="h-6 w-6 text-orange-700" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-purple-200 bg-purple-50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-700">Avg Platforms/Incident</p>
-                <p className="text-3xl font-bold text-purple-900">{avgPlatformsPerIncident}</p>
-                <div className="flex items-center mt-2">
-                  <Globe className="h-4 w-4 text-purple-600 mr-1" />
-                  <span className="text-sm text-purple-600">Multi-platform attacks</span>
-                </div>
-              </div>
-              <div className="bg-purple-200 p-3 rounded-full">
-                <Globe className="h-6 w-6 text-purple-700" />
+                <Link className="h-6 w-6 text-orange-700" />
               </div>
             </div>
           </CardContent>
@@ -269,7 +286,7 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-gray-600">DSA Compliance</p>
                 <p className="text-3xl font-bold text-gray-900">{overallDSACompliance.toFixed(0)}%</p>
                 <div className="flex items-center mt-2">
-                  <Target className="h-4 w-4 text-blue-600 mr-1" />
+                  <Shield className="h-4 w-4 text-blue-600 mr-1" />
                   <span className="text-sm text-gray-600">48h mandate</span>
                 </div>
               </div>
@@ -284,111 +301,34 @@ export default function DashboardPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Take It Down</p>
-                <p className="text-3xl font-bold text-gray-900">{overallTIDCompliance.toFixed(0)}%</p>
+                <p className="text-sm font-medium text-gray-600">Avg Resolution Time</p>
+                <p className="text-3xl font-bold text-gray-900">{avgResolutionTime.toFixed(1)}h</p>
                 <div className="flex items-center mt-2">
-                  <Zap className="h-4 w-4 text-red-600 mr-1" />
-                  <span className="text-sm text-gray-600">24h mandate</span>
+                  <TrendingDown className="h-4 w-4 text-green-600 mr-1" />
+                  <span className="text-sm text-green-600">-8.2% improvement</span>
                 </div>
               </div>
-              <div className="bg-red-100 p-3 rounded-full">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
+              <div className="bg-green-100 p-3 rounded-full">
+                <Clock className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Cross-Platform Impact Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-2 border-orange-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Network className="h-5 w-5 text-orange-600" />
-              Platform Impact Distribution
-            </CardTitle>
-            <p className="text-sm text-gray-600">How many platforms are affected per incident</p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={crossPlatformData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  dataKey="incidents"
-                  label={({ platforms, percentage }) => `${platforms}: ${percentage}%`}
-                >
-                  {crossPlatformData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={`hsl(${index * 90}, 70%, 60%)`} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-purple-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link className="h-5 w-5 text-purple-600" />
-              Multi-Platform Attack Patterns
-            </CardTitle>
-            <p className="text-sm text-gray-600">Common coordinated attack patterns across platforms</p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {attackPatterns.map((pattern, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">{pattern.pattern}</h4>
-                    <div className="flex items-center gap-2">
-                      {getTrendIcon(pattern.trend)}
-                      <span className="text-sm font-medium">{pattern.incidents}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {pattern.platforms.map((platform, pIndex) => (
-                      <Badge key={pIndex} variant="secondary" className="text-xs">
-                        {platform}
-                      </Badge>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-600 capitalize">Trend: {pattern.trend}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="cross-platform" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 gap-2">
+      <Tabs defaultValue="platform-analysis" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 gap-2">
           <TabsTrigger
-            value="cross-platform"
+            value="platform-analysis"
             className="border rounded-md py-2 px-4 font-medium text-sm bg-white hover:bg-gray-100 data-[state=active]:bg-orange-100 data-[state=active]:border-orange-500 data-[state=active]:text-orange-700 transition"
           >
-            Cross-Platform Analysis
+            Platform Analysis
           </TabsTrigger>
           <TabsTrigger
             value="velocity"
             className="border rounded-md py-2 px-4 font-medium text-sm bg-white hover:bg-gray-100 data-[state=active]:bg-gray-200 data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 transition"
           >
             Platform Velocity
-          </TabsTrigger>
-          <TabsTrigger
-            value="harm-types"
-            className="border rounded-md py-2 px-4 font-medium text-sm bg-white hover:bg-gray-100 data-[state=active]:bg-gray-200 data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 transition"
-          >
-            Harm Types Analysis
-          </TabsTrigger>
-          <TabsTrigger
-            value="trends"
-            className="border rounded-md py-2 px-4 font-medium text-sm bg-white hover:bg-gray-100 data-[state=active]:bg-gray-200 data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 transition"
-          >
-            Compliance Trends
           </TabsTrigger>
           <TabsTrigger
             value="regulatory"
@@ -398,56 +338,81 @@ export default function DashboardPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="cross-platform" className="space-y-6">
+        <TabsContent value="platform-analysis" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="border-orange-200">
               <CardHeader>
-                <CardTitle>Cross-Platform vs Single Platform Incidents</CardTitle>
-                <p className="text-sm text-gray-600">Comparison of incident scope across platforms</p>
+                <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <Network className="h-5 w-5" />
+                  Platform Distribution
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  {selectedPlatformGroup
+                    ? `Harm types for ${selectedPlatformGroup.name} incidents`
+                    : "Number of platforms affected per incident"}
+                </p>
+                {selectedPlatformGroup && (
+                  <Button variant="outline" size="sm" onClick={() => setSelectedPlatformGroup(null)} className="mt-2">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Platform Distribution
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={velocityData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="platform" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="totalReports" fill="#94a3b8" name="Total Reports" />
-                    <Bar dataKey="crossPlatformIncidents" fill="#f97316" name="Cross-Platform Incidents" />
-                  </BarChart>
+                  <PieChart>
+                    <Pie
+                      data={selectedPlatformGroup ? selectedPlatformGroup.harmTypes : platformDistributionData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      dataKey={selectedPlatformGroup ? "incidents" : "value"}
+                      onClick={selectedPlatformGroup ? undefined : handlePieClick}
+                      style={{ cursor: selectedPlatformGroup ? "default" : "pointer" }}
+                    >
+                      {(selectedPlatformGroup ? selectedPlatformGroup.harmTypes : platformDistributionData).map(
+                        (entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ),
+                      )}
+                    </Pie>
+                    <Tooltip formatter={(value, name) => [`${value} incidents`, name]} />
+                  </PieChart>
                 </ResponsiveContainer>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {(selectedPlatformGroup ? selectedPlatformGroup.harmTypes : platformDistributionData).map(
+                    (item: any, index: number) => (
+                      <div key={index} className="flex items-center gap-2 text-sm">
+                        <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color }}></div>
+                        <span>
+                          {item.name}: {selectedPlatformGroup ? item.incidents : `${item.percentage}%`}
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-orange-200">
               <CardHeader>
-                <CardTitle>Platform Interconnection Strength</CardTitle>
-                <p className="text-sm text-gray-600">How often platforms are targeted together</p>
+                <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <Link className="h-5 w-5" />
+                  Platform Interconnection Strength
+                </CardTitle>
+                <p className="text-sm text-gray-600">Most common platform combinations in attacks</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {platformConnections.map((connection, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{connection.source}</Badge>
-                          <span className="text-gray-400">→</span>
-                          <Badge variant="outline">{connection.target}</Badge>
-                        </div>
+                  {platformConnectionData.map((connection, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{connection.platforms}</p>
+                        <p className="text-xs text-gray-600">{connection.incidents} incidents</p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium">{connection.incidents}</span>
-                        <Badge
-                          variant={
-                            connection.strength === "high"
-                              ? "destructive"
-                              : connection.strength === "medium"
-                                ? "secondary"
-                                : "outline"
-                          }
-                        >
-                          {connection.strength}
-                        </Badge>
+                      <div className="flex items-center gap-2">
+                        <Progress value={connection.strength} className="w-16" />
+                        <span className="text-sm font-medium w-8">{connection.strength}%</span>
                       </div>
                     </div>
                   ))}
@@ -456,38 +421,40 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <Card>
+          <Card className="border-orange-200">
             <CardHeader>
-              <CardTitle>Cross-Platform Impact Trends</CardTitle>
-              <p className="text-sm text-gray-600">Monthly trends showing the growth of multi-platform incidents</p>
+              <CardTitle className="flex items-center gap-2 text-orange-800">
+                <Globe className="h-5 w-5" />
+                Multi-Platform Attack Patterns
+              </CardTitle>
+              <p className="text-sm text-gray-600">Coordinated attack campaigns across multiple platforms</p>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={trendsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="reports"
-                    stackId="1"
-                    stroke="#94a3b8"
-                    fill="#94a3b8"
-                    fillOpacity={0.6}
-                    name="Total Reports"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="crossPlatform"
-                    stackId="2"
-                    stroke="#f97316"
-                    fill="#f97316"
-                    fillOpacity={0.8}
-                    name="Cross-Platform Incidents"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {multiPlatformAttackPatterns.map((pattern, index) => (
+                  <div
+                    key={index}
+                    className="p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-orange-900">{pattern.type}</h4>
+                      <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50">
+                        {pattern.trend}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Incidents</p>
+                        <p className="text-xl font-bold text-orange-800">{pattern.incidents.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Avg Platforms</p>
+                        <p className="text-xl font-bold text-orange-800">{pattern.platforms}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -511,7 +478,6 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle>Resolution Time by Platform</CardTitle>
@@ -530,6 +496,68 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-green-600" />
+                Velocity of Cross Platform Remediation
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                Average time to resolve incidents across multiple platforms - showing improvement over time
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={crossPlatformRemediationData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis yAxisId="hours" label={{ value: "Hours", angle: -90, position: "insideLeft" }} />
+                  <YAxis
+                    yAxisId="incidents"
+                    orientation="right"
+                    label={{ value: "Incidents", angle: 90, position: "insideRight" }}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      name === "avgRemediationHours" ? `${value}h` : value,
+                      name === "avgRemediationHours" ? "Avg Remediation Time" : "Multi-Platform Incidents",
+                    ]}
+                  />
+                  <Line
+                    yAxisId="hours"
+                    type="monotone"
+                    dataKey="avgRemediationHours"
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    name="avgRemediationHours"
+                  />
+                  <Line
+                    yAxisId="incidents"
+                    type="monotone"
+                    dataKey="multiPlatformIncidents"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    name="multiPlatformIncidents"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">-35%</div>
+                  <p className="text-sm text-green-700">Improvement in 6 months</p>
+                </div>
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">18.3h</div>
+                  <p className="text-sm text-blue-700">Current avg remediation</p>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">+58%</div>
+                  <p className="text-sm text-purple-700">Volume increase handled</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -542,7 +570,6 @@ export default function DashboardPage() {
                     <tr className="border-b">
                       <th className="text-left p-3">Platform</th>
                       <th className="text-left p-3">Total Reports</th>
-                      <th className="text-left p-3">Cross-Platform %</th>
                       <th className="text-left p-3">Avg Report Time</th>
                       <th className="text-left p-3">Avg Resolution Time</th>
                       <th className="text-left p-3">Performance</th>
@@ -553,11 +580,6 @@ export default function DashboardPage() {
                       <tr key={platform.platform} className="border-b">
                         <td className="p-3 font-medium">{platform.platform}</td>
                         <td className="p-3">{platform.totalReports.toLocaleString()}</td>
-                        <td className="p-3">
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700">
-                            {((platform.crossPlatformIncidents / platform.totalReports) * 100).toFixed(0)}%
-                          </Badge>
-                        </td>
                         <td className="p-3">{platform.avgReportTime}h</td>
                         <td className="p-3">{platform.avgResolutionTime}h</td>
                         <td className="p-3">
@@ -586,195 +608,6 @@ export default function DashboardPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="harm-types" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Harm Types Distribution</CardTitle>
-                <p className="text-sm text-gray-600">Known vs Inferred harm classifications</p>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={harmTypesData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="known" fill="#3b82f6" name="Known" />
-                    <Bar dataKey="inferred" fill="#94a3b8" name="Inferred" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Cross-Platform Harm Impact</CardTitle>
-                <p className="text-sm text-gray-600">Percentage of each harm type affecting multiple platforms</p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {harmTypesData.map((harm) => (
-                    <div key={harm.name} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">{harm.name}</span>
-                        <span className="font-bold text-orange-600">{harm.crossPlatform}%</span>
-                      </div>
-                      <Progress value={harm.crossPlatform} className="h-2" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Detailed Harm Analysis with Cross-Platform Impact</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {harmTypesData.map((harm) => (
-                  <div key={harm.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: harm.color }}></div>
-                      <div>
-                        <h4 className="font-medium">{harm.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          {harm.known} confirmed, {harm.inferred} inferred
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">{(harm.known + harm.inferred).toLocaleString()}</p>
-                      <p className="text-sm text-orange-600 font-medium">{harm.crossPlatform}% cross-platform</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Compliance Trends Over Time</CardTitle>
-              <p className="text-sm text-gray-600">Monthly performance against regulatory mandates</p>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={trendsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="reports"
-                    stackId="1"
-                    stroke="#3b82f6"
-                    fill="#3b82f6"
-                    fillOpacity={0.6}
-                    name="Total Reports"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="resolved"
-                    stackId="2"
-                    stroke="#10b981"
-                    fill="#10b981"
-                    fillOpacity={0.6}
-                    name="Resolved"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="dsaCompliant"
-                    stackId="3"
-                    stroke="#8b5cf6"
-                    fill="#8b5cf6"
-                    fillOpacity={0.6}
-                    name="DSA Compliant"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="tidCompliant"
-                    stackId="4"
-                    stroke="#f59e0b"
-                    fill="#f59e0b"
-                    fillOpacity={0.6}
-                    name="TID Compliant"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>DSA Compliance Trend</CardTitle>
-                <p className="text-sm text-gray-600">48-hour response mandate compliance</p>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={trendsData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="dsaCompliant"
-                      stroke="#8b5cf6"
-                      strokeWidth={3}
-                      name="DSA Compliant"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="reports"
-                      stroke="#94a3b8"
-                      strokeDasharray="5 5"
-                      name="Total Reports"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Take It Down Compliance</CardTitle>
-                <p className="text-sm text-gray-600">24-hour NCII takedown compliance</p>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={trendsData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="tidCompliant"
-                      stroke="#f59e0b"
-                      strokeWidth={3}
-                      name="TID Compliant"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="reports"
-                      stroke="#94a3b8"
-                      strokeDasharray="5 5"
-                      name="Total Reports"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
         <TabsContent value="regulatory" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
@@ -792,7 +625,6 @@ export default function DashboardPage() {
                   <div className="text-3xl font-bold text-purple-600 mb-2">{overallDSACompliance.toFixed(0)}%</div>
                   <p className="text-sm text-purple-700">Overall DSA Compliance Rate</p>
                 </div>
-
                 <div className="space-y-3">
                   {dsaComplianceData.map((platform) => (
                     <div
@@ -812,17 +644,8 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-blue-800">
-                    <strong>DSA Requirement:</strong> Platforms must respond to notices of illegal content within 48
-                    hours, providing clear reasoning for their decisions and ensuring transparency in content
-                    moderation.
-                  </p>
-                </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -836,7 +659,6 @@ export default function DashboardPage() {
                   <div className="text-3xl font-bold text-red-600 mb-2">{overallTIDCompliance.toFixed(0)}%</div>
                   <p className="text-sm text-red-700">Overall TID Compliance Rate</p>
                 </div>
-
                 <div className="space-y-3">
                   {tidComplianceData.map((platform) => (
                     <div
@@ -856,57 +678,9 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-
-                <div className="mt-4 p-3 bg-orange-50 rounded-lg">
-                  <p className="text-xs text-orange-800">
-                    <strong>Take It Down Requirement:</strong> Platforms must remove non-consensual intimate images
-                    within 24 hours of receiving a valid report, with expedited processes for victim protection.
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Regulatory Compliance Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-green-600">
-                    {dsaComplianceData.filter((p) => p.percentage >= 90).length}
-                  </div>
-                  <p className="text-sm text-green-700">Platforms Exceeding DSA Standards</p>
-                </div>
-
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-blue-600">
-                    {tidComplianceData.filter((p) => p.percentage >= 90).length}
-                  </div>
-                  <p className="text-sm text-blue-700">Platforms Exceeding TID Standards</p>
-                </div>
-
-                <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                  <AlertTriangle className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {dsaComplianceData.filter((p) => p.percentage < 75).length}
-                  </div>
-                  <p className="text-sm text-yellow-700">Platforms Below DSA Threshold</p>
-                </div>
-
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <XCircle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-red-600">
-                    {tidComplianceData.filter((p) => p.percentage < 75).length}
-                  </div>
-                  <p className="text-sm text-red-700">Platforms Below TID Threshold</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

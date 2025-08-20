@@ -7,8 +7,8 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import HomePage from "@/components/home-page";
 import AddRequestPage from "@/components/incident-form/add-request-page";
 import DeferToPlatform from "@/components/defer-to-platform";
-import SumSubIntegration from "@/components/identity-verification/sumsub-integration";
 import ConfirmationPage from "@/components/confirmation-page";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   Alert,
@@ -18,6 +18,21 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { useIncidentFlow } from "@/hooks/useIncidentFlow";
+
+function RedirectToVerify({ incidentId }: { incidentId: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    if (incidentId) {
+      router.replace(`/verify/${encodeURIComponent(incidentId)}`);
+    }
+  }, [incidentId, router]);
+  return (
+    <div className="flex flex-col items-center justify-center py-12">
+      <Loader2 className="h-8 w-8 animate-spin" />
+      <p className="mt-3 text-sm text-muted-foreground">Opening identity verification…</p>
+    </div>
+  );
+}
 
 export default function IncidentFlowPage() {
   const auth = useAuth();
@@ -90,18 +105,16 @@ export default function IncidentFlowPage() {
       case "DEFER_TO_PLATFORM":
         return <DeferToPlatform onGoBack={handleGoBackFromDefer} />;
       case "PENDING_ID_VERIFICATION":
+      if (!accountInfoData || !caseId) {
         return (
-          <div className="flex flex-col items-center justify-center">
-            {submissionError && (
-              <Alert variant="destructive" className="mb-6 max-w-md">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{submissionError}</AlertDescription>
-              </Alert>
-            )}
-            <SumSubIntegration onVerificationComplete={handleVerificationComplete} />
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="mt-3 text-sm text-muted-foreground">Preparing verification…</p>
           </div>
         );
+      }
+      return <RedirectToVerify incidentId={caseId} />;
+
       case "SUBMITTING_INCIDENT":
         return (
           <div className="flex flex-col items-center justify-center text-center py-12">

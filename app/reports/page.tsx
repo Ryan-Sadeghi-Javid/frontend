@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "react-oidc-context"
 import DashboardLayout from "@/components/layout/dashboard-layout"
+import { useRouter } from "next/navigation";
 import {
   Loader2,
   AlertCircle,
@@ -21,6 +22,9 @@ import {
   ArrowUp,
   ArrowDown,
   X,
+  Calendar,
+  MapPin,
+  User,
 } from "lucide-react"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -30,6 +34,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { fetchUserIncidents } from "@/lib/api/fetchUserIncidents"
 
 interface HarmTypeGroup {
@@ -69,6 +74,7 @@ interface Incident {
     harmTypeGroups?: HarmTypeGroup[]
     country?: string
     city?: string | null
+    violationReason?: string
     incidentClassification?: string | null
     violationCode?: string | null
     dynamicExtras?: {
@@ -193,7 +199,7 @@ const getHarmTypeColor = (harmType: string) => {
     case "Fraud/Scam":
     case "Fraud":
       return "bg-purple-50 text-purple-700 border-purple-200"
-    case "NCII":
+    case "NCCI":
       return "bg-blue-50 text-blue-700 border-blue-200"
     default:
       return "bg-gray-50 text-gray-700 border-gray-200"
@@ -223,14 +229,14 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
+  const [activeTab, setActiveTab] = useState<"draft" | "pending">("draft")
+  const router = useRouter()
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>("createdAt")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
 
-  // Filter state
-  const [filters, setFilters] = useState<FilterState>({
-    status: [],
+  const [filters, setFilters] = useState<Omit<FilterState, "status">>({
     harmType: [],
     country: [],
     dateRange: "all",
@@ -277,7 +283,6 @@ export default function ReportsPage() {
     }
   }
 
-  // Apply filters and search
   useEffect(() => {
     const filtered = incidents.filter((incident) => {
       const harmTypes = getHarmTypes(incident)
@@ -286,10 +291,10 @@ export default function ReportsPage() {
         incident.incidentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         harmTypes.some((harmType) => harmType.toLowerCase().includes(searchTerm.toLowerCase())) ||
         incident.incidentBlock.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        incident.incidentBlock.violationReason?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transformStatus(incident.status).toLowerCase().includes(searchTerm.toLowerCase())
 
-      // Status filter
-      const statusMatch = filters.status.length === 0 || filters.status.includes(transformStatus(incident.status))
+      const statusMatch = transformStatus(incident.status).toLowerCase() === activeTab
 
       const harmTypeMatch =
         filters.harmType.length === 0 || harmTypes.some((harmType) => filters.harmType.includes(harmType))
@@ -368,7 +373,7 @@ export default function ReportsPage() {
     })
 
     setFilteredIncidents(filtered)
-  }, [searchTerm, incidents, filters, sortField, sortDirection])
+  }, [searchTerm, incidents, filters, sortField, sortDirection, activeTab])
 
   useEffect(() => {
     fetchData()
@@ -383,7 +388,7 @@ export default function ReportsPage() {
     }
   }
 
-  const handleFilterChange = (filterType: keyof FilterState, value: string | string[]) => {
+  const handleFilterChange = (filterType: keyof Omit<FilterState, "status">, value: string | string[]) => {
     setFilters((prev) => ({
       ...prev,
       [filterType]: value,
@@ -392,7 +397,6 @@ export default function ReportsPage() {
 
   const clearFilters = () => {
     setFilters({
-      status: [],
       harmType: [],
       country: [],
       dateRange: "all",
@@ -408,7 +412,6 @@ export default function ReportsPage() {
 
   const getActiveFilterCount = () => {
     return (
-      filters.status.length +
       filters.harmType.length +
       filters.country.length +
       (filters.dateRange !== "all" ? 1 : 0) +
@@ -470,7 +473,7 @@ export default function ReportsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Reports</h1>
-            <p className="text-gray-600 mt-1">View and manage your submitted incident reports</p>
+            <p className="text-gray-600 mt-1">Triage and manage your submitted incident reports</p>
           </div>
           <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -539,393 +542,512 @@ export default function ReportsPage() {
           </Card>
         </div>
 
-        {/* Enhanced Search and Filters */}
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            {/* Search Bar */}
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search by case ID, harm type, country, or description..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="relative bg-transparent">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                    {getActiveFilterCount() > 0 && (
-                      <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs">
-                        {getActiveFilterCount()}
-                      </Badge>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 bg-white border shadow-lg z-50" align="end">
-                  <div className="space-y-4 p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">Filters</h4>
-                      <Button variant="ghost" size="sm" onClick={clearFilters}>
-                        <X className="h-4 w-4 mr-1" />
-                        Clear
-                      </Button>
-                    </div>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "draft" | "pending")}>
+          <div className="flex items-center justify-between">
+            <TabsList className="grid w-auto grid-cols-2">
+              <TabsTrigger value="draft" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Draft ({statusCounts.draft || 0})
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Pending ({statusCounts.pending || 0})
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-                    {/* Status Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium block">Status</label>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {filterOptions.statuses.map((status) => (
-                          <div key={status} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`status-${status}`}
-                              checked={filters.status.includes(status)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  handleFilterChange("status", [...filters.status, status])
-                                } else {
-                                  handleFilterChange(
-                                    "status",
-                                    filters.status.filter((s) => s !== status),
-                                  )
-                                }
-                              }}
-                            />
-                            <label htmlFor={`status-${status}`} className="text-sm capitalize cursor-pointer">
-                              {status.replace("_", " ")}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Harm Type Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium block">Harm Type</label>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {filterOptions.harmTypes.map((harmType) => (
-                          <div key={harmType} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`harm-${harmType}`}
-                              checked={filters.harmType.includes(harmType)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  handleFilterChange("harmType", [...filters.harmType, harmType])
-                                } else {
-                                  handleFilterChange(
-                                    "harmType",
-                                    filters.harmType.filter((h) => h !== harmType),
-                                  )
-                                }
-                              }}
-                            />
-                            <label htmlFor={`harm-${harmType}`} className="text-sm cursor-pointer">
-                              {harmType}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Country Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium block">Country</label>
-                      <div className="space-y-2 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
-                        {filterOptions.countries.map((country) => (
-                          <div key={country} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`country-${country}`}
-                              checked={filters.country.includes(country)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  handleFilterChange("country", [...filters.country, country])
-                                } else {
-                                  handleFilterChange(
-                                    "country",
-                                    filters.country.filter((c) => c !== country),
-                                  )
-                                }
-                              }}
-                            />
-                            <label htmlFor={`country-${country}`} className="text-sm cursor-pointer">
-                              {country}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Date Range Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium block">Date Range</label>
-                      <Select
-                        value={filters.dateRange}
-                        onValueChange={(value) => handleFilterChange("dateRange", value)}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="all">All Time</SelectItem>
-                          <SelectItem value="7days">Last 7 Days</SelectItem>
-                          <SelectItem value="30days">Last 30 Days</SelectItem>
-                          <SelectItem value="90days">Last 90 Days</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Platform Count Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium block">Platform Count</label>
-                      <Select
-                        value={filters.platformCount}
-                        onValueChange={(value) => handleFilterChange("platformCount", value)}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="all">All</SelectItem>
-                          <SelectItem value="single">Single Platform</SelectItem>
-                          <SelectItem value="multiple">Multiple Platforms</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Sort Controls */}
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600">Sort by:</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSort("createdAt")}
-                className={sortField === "createdAt" ? "bg-gray-100" : ""}
-              >
-                Date {getSortIcon("createdAt")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSort("status")}
-                className={sortField === "status" ? "bg-gray-100" : ""}
-              >
-                Status {getSortIcon("status")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSort("primaryHarmType")}
-                className={sortField === "primaryHarmType" ? "bg-gray-100" : ""}
-              >
-                Harm Type {getSortIcon("primaryHarmType")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSort("platformCount")}
-                className={sortField === "platformCount" ? "bg-gray-100" : ""}
-              >
-                Platforms {getSortIcon("platformCount")}
-              </Button>
-            </div>
-
-            {/* Active Filters Display */}
-            {getActiveFilterCount() > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {filters.status.map((status) => (
-                  <Badge key={status} variant="secondary" className="gap-1">
-                    Status: {status}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() =>
-                        handleFilterChange(
-                          "status",
-                          filters.status.filter((s) => s !== status),
-                        )
-                      }
-                    />
-                  </Badge>
-                ))}
-                {filters.harmType.map((harmType) => (
-                  <Badge key={harmType} variant="secondary" className="gap-1">
-                    {harmType}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() =>
-                        handleFilterChange(
-                          "harmType",
-                          filters.harmType.filter((h) => h !== harmType),
-                        )
-                      }
-                    />
-                  </Badge>
-                ))}
-                {filters.country.map((country) => (
-                  <Badge key={country} variant="secondary" className="gap-1">
-                    {country}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() =>
-                        handleFilterChange(
-                          "country",
-                          filters.country.filter((c) => c !== country),
-                        )
-                      }
-                    />
-                  </Badge>
-                ))}
-                {filters.dateRange !== "all" && (
-                  <Badge variant="secondary" className="gap-1">
-                    {filters.dateRange === "7days"
-                      ? "Last 7 Days"
-                      : filters.dateRange === "30days"
-                        ? "Last 30 Days"
-                        : filters.dateRange === "90days"
-                          ? "Last 90 Days"
-                          : filters.dateRange}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange("dateRange", "all")} />
-                  </Badge>
-                )}
-                {filters.platformCount !== "all" && (
-                  <Badge variant="secondary" className="gap-1">
-                    {filters.platformCount === "single" ? "Single Platform" : "Multiple Platforms"}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange("platformCount", "all")} />
-                  </Badge>
-                )}
-              </div>
-            )}
-
-            {/* Results Count */}
-            <div className="text-sm text-gray-600">
-              Showing {filteredIncidents.length} of {incidents.length} reports
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error Loading Reports</AlertTitle>
-            <AlertDescription className="mt-2">
-              {error}
-              <Button variant="outline" size="sm" onClick={fetchData} className="mt-3 ml-0 bg-transparent">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Reports List */}
-        {filteredIncidents.length === 0 ? (
+          {/* Enhanced Search and Filters */}
           <Card>
-            <CardContent className="p-12 text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm || getActiveFilterCount() > 0 ? "No matching reports found" : "No reports yet"}
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {searchTerm || getActiveFilterCount() > 0
-                  ? "Try adjusting your search terms or filters to see more results."
-                  : "You haven't submitted any incident reports yet. Start by creating your first report."}
-              </p>
-              {searchTerm || getActiveFilterCount() > 0 ? (
-                <Button onClick={clearFilters} variant="outline">
-                  Clear All Filters
+            <CardContent className="p-4 space-y-4">
+              {/* Search Bar */}
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by case ID, harm type, country, or description..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="relative bg-transparent">
+                      <Filter className="h-4 w-4 mr-2" />
+                      Filters
+                      {getActiveFilterCount() > 0 && (
+                        <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs">
+                          {getActiveFilterCount()}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 bg-white border shadow-lg z-50" align="end">
+                    <div className="space-y-4 p-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Filters</h4>
+                        <Button variant="ghost" size="sm" onClick={clearFilters}>
+                          <X className="h-4 w-4 mr-1" />
+                          Clear
+                        </Button>
+                      </div>
+
+                      {/* Harm Type Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium block">Harm Type</label>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {filterOptions.harmTypes.map((harmType) => (
+                            <div key={harmType} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`harm-${harmType}`}
+                                checked={filters.harmType.includes(harmType)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    handleFilterChange("harmType", [...filters.harmType, harmType])
+                                  } else {
+                                    handleFilterChange(
+                                      "harmType",
+                                      filters.harmType.filter((h) => h !== harmType),
+                                    )
+                                  }
+                                }}
+                              />
+                              <label htmlFor={`harm-${harmType}`} className="text-sm cursor-pointer">
+                                {harmType}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Country Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium block">Country</label>
+                        <div className="space-y-2 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
+                          {filterOptions.countries.map((country) => (
+                            <div key={country} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`country-${country}`}
+                                checked={filters.country.includes(country)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    handleFilterChange("country", [...filters.country, country])
+                                  } else {
+                                    handleFilterChange(
+                                      "country",
+                                      filters.country.filter((c) => c !== country),
+                                    )
+                                  }
+                                }}
+                              />
+                              <label htmlFor={`country-${country}`} className="text-sm cursor-pointer">
+                                {country}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Date Range Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium block">Date Range</label>
+                        <Select
+                          value={filters.dateRange}
+                          onValueChange={(value) => handleFilterChange("dateRange", value)}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="7days">Last 7 Days</SelectItem>
+                            <SelectItem value="30days">Last 30 Days</SelectItem>
+                            <SelectItem value="90days">Last 90 Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Platform Count Filter */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium block">Platform Count</label>
+                        <Select
+                          value={filters.platformCount}
+                          onValueChange={(value) => handleFilterChange("platformCount", value)}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="single">Single Platform</SelectItem>
+                            <SelectItem value="multiple">Multiple Platforms</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Sort Controls */}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-600">Sort by:</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("createdAt")}
+                  className={sortField === "createdAt" ? "bg-gray-100" : ""}
+                >
+                  Date {getSortIcon("createdAt")}
                 </Button>
-              ) : (
-                <Button onClick={() => (window.location.href = "/")}>Create First Report</Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("primaryHarmType")}
+                  className={sortField === "primaryHarmType" ? "bg-gray-100" : ""}
+                >
+                  Harm Type {getSortIcon("primaryHarmType")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("platformCount")}
+                  className={sortField === "platformCount" ? "bg-gray-100" : ""}
+                >
+                  Platforms {getSortIcon("platformCount")}
+                </Button>
+              </div>
+
+              {getActiveFilterCount() > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {filters.harmType.map((harmType) => (
+                    <Badge key={harmType} variant="secondary" className="gap-1">
+                      {harmType}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() =>
+                          handleFilterChange(
+                            "harmType",
+                            filters.harmType.filter((h) => h !== harmType),
+                          )
+                        }
+                      />
+                    </Badge>
+                  ))}
+                  {filters.country.map((country) => (
+                    <Badge key={country} variant="secondary" className="gap-1">
+                      {country}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() =>
+                          handleFilterChange(
+                            "country",
+                            filters.country.filter((c) => c !== country),
+                          )
+                        }
+                      />
+                    </Badge>
+                  ))}
+                  {filters.dateRange !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {filters.dateRange === "7days"
+                        ? "Last 7 Days"
+                        : filters.dateRange === "30days"
+                          ? "Last 30 Days"
+                          : filters.dateRange === "90days"
+                            ? "Last 90 Days"
+                            : filters.dateRange}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange("dateRange", "all")} />
+                    </Badge>
+                  )}
+                  {filters.platformCount !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {filters.platformCount === "single" ? "Single Platform" : "Multiple Platforms"}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => handleFilterChange("platformCount", "all")}
+                      />
+                    </Badge>
+                  )}
+                </div>
               )}
+
+              {/* Results Count */}
+              <div className="text-sm text-gray-600">
+                Showing {filteredIncidents.length} of {statusCounts[activeTab] || 0} {activeTab} reports
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredIncidents.map((incident) => {
-              const harmTypes = getHarmTypes(incident)
-              const allPlatforms = getAllPlatforms(incident)
 
-              return (
-                <Card key={incident.incidentId} className="hover:shadow-md transition-shadow border border-gray-200">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {harmTypes.map((harmType, index) => (
-                            <Badge key={index} className={getHarmTypeColor(harmType)}>
-                              {harmType}
-                            </Badge>
-                          ))}
-                          <Badge variant="outline" className={getStatusColor(transformStatus(incident.status))}>
-                            <div className="flex items-center gap-1">
-                              {getStatusIcon(transformStatus(incident.status))}
-                              {transformStatus(incident.status).replace("_", " ").toUpperCase()}
-                            </div>
-                          </Badge>
-                          {allPlatforms.length > 1 && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
-                              {allPlatforms.length} Platforms
-                            </Badge>
-                          )}
-                        </div>
-                        <CardTitle className="text-lg">Case #{incident.incidentId.slice(-8)}</CardTitle>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedIncident(incident)}
-                        className="shrink-0"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* ... existing date and location ... */}
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error Loading Reports</AlertTitle>
+              <AlertDescription className="mt-2">
+                {error}
+                <Button variant="outline" size="sm" onClick={fetchData} className="mt-3 ml-0 bg-transparent">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Description:</p>
-                    </div>
-
-                    {allPlatforms.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {[...new Set(allPlatforms.map((p) => p.platform))].map((platform, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {platform}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                  {isUnverifiedDraft(incident) && (
-                    <div className="border-t px-6 py-4 bg-yellow-50 flex items-center justify-between">
-                      <div className="text-yellow-800 text-sm font-medium">
-                        This report needs identity verification to proceed.
-                      </div>
-                      <Button
-                        size="sm"
-                        className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                        onClick={() => (window.location.href = `/identity-verification/${incident.incidentId}`)}
-                      >
-                        <Shield className="h-4 w-4 mr-2" />
-                        Verify Identity
-                      </Button>
-                    </div>
+          <TabsContent value="draft" className="mt-0">
+            {filteredIncidents.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {searchTerm || getActiveFilterCount() > 0 ? "No matching draft reports found" : "No draft reports"}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {searchTerm || getActiveFilterCount() > 0
+                      ? "Try adjusting your search terms or filters to see more results."
+                      : "You don't have any draft reports. Start by creating your first report."}
+                  </p>
+                  {searchTerm || getActiveFilterCount() > 0 ? (
+                    <Button onClick={clearFilters} variant="outline">
+                      Clear All Filters
+                    </Button>
+                  ) : (
+                    <Button onClick={() => (window.location.href = "/")}>Create First Report</Button>
                   )}
-                </Card>
-              )
-            })}
-          </div>
-        )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left p-4 font-medium text-gray-900">Case ID</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Harm Type</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Platforms</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Location</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Date</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Status</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {filteredIncidents.map((incident) => {
+                          const harmTypes = getHarmTypes(incident)
+                          const allPlatforms = getAllPlatforms(incident)
+                          const uniquePlatforms = [...new Set(allPlatforms.map((p) => p.platform))]
+
+                          return (
+                            <tr key={incident.incidentId} className="hover:bg-gray-50">
+                              <td className="p-4">
+                                <div className="font-mono text-sm">#{incident.incidentId.slice(-8)}</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {harmTypes.slice(0, 2).map((harmType, index) => (
+                                    <Badge key={index} className={getHarmTypeColor(harmType)} variant="outline">
+                                      {harmType}
+                                    </Badge>
+                                  ))}
+                                  {harmTypes.length > 2 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{harmTypes.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {uniquePlatforms.slice(0, 2).map((platform, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {platform}
+                                    </Badge>
+                                  ))}
+                                  {uniquePlatforms.length > 2 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{uniquePlatforms.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="text-sm text-gray-600 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {incident.incidentBlock.country || "Unknown"}
+                                  {incident.incidentBlock.city && `, ${incident.incidentBlock.city}`}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="text-sm text-gray-600 flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {new Date(incident.createdAt).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                {isUnverifiedDraft(incident) ? (
+                                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                                    <Shield className="h-3 w-3 mr-1" />
+                                    Needs Verification
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className={getStatusColor("draft")}>
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    Draft
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                  <Button variant="outline" size="sm" onClick={() => setSelectedIncident(incident)}>
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    View
+                                  </Button>
+                                  {isUnverifiedDraft(incident) && (
+                                    <Button
+                                      size="sm"
+                                      className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                                      onClick={() => router.push(`/identity-verification/${incident.incidentId}`)}
+                                    >
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Verify
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="pending" className="mt-0">
+            {filteredIncidents.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {searchTerm || getActiveFilterCount() > 0
+                      ? "No matching pending reports found"
+                      : "No pending reports"}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {searchTerm || getActiveFilterCount() > 0
+                      ? "Try adjusting your search terms or filters to see more results."
+                      : "You don't have any pending reports at the moment."}
+                  </p>
+                  {searchTerm ||
+                    (getActiveFilterCount() > 0 && (
+                      <Button onClick={clearFilters} variant="outline">
+                        Clear All Filters
+                      </Button>
+                    ))}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left p-4 font-medium text-gray-900">Case ID</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Harm Type</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Platforms</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Location</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Date</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Status</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {filteredIncidents.map((incident) => {
+                          const harmTypes = getHarmTypes(incident)
+                          const allPlatforms = getAllPlatforms(incident)
+                          const uniquePlatforms = [...new Set(allPlatforms.map((p) => p.platform))]
+
+                          return (
+                            <tr key={incident.incidentId} className="hover:bg-gray-50">
+                              <td className="p-4">
+                                <div className="font-mono text-sm">#{incident.incidentId.slice(-8)}</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {harmTypes.slice(0, 2).map((harmType, index) => (
+                                    <Badge key={index} className={getHarmTypeColor(harmType)} variant="outline">
+                                      {harmType}
+                                    </Badge>
+                                  ))}
+                                  {harmTypes.length > 2 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{harmTypes.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {uniquePlatforms.slice(0, 2).map((platform, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {platform}
+                                    </Badge>
+                                  ))}
+                                  {uniquePlatforms.length > 2 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{uniquePlatforms.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="text-sm text-gray-600 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {incident.incidentBlock.country || "Unknown"}
+                                  {incident.incidentBlock.city && `, ${incident.incidentBlock.city}`}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="text-sm text-gray-600 flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {new Date(incident.createdAt).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <Badge variant="outline" className={getStatusColor("pending")}>
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Pending
+                                </Badge>
+                              </td>
+                              <td className="p-4">
+                                <Button variant="outline" size="sm" onClick={() => setSelectedIncident(incident)}>
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View
+                                </Button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Enhanced Modal for Incident Details */}
         {selectedIncident && (
@@ -947,95 +1069,263 @@ export default function ReportsPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-6 bg-white">
-                {/* ... existing user and case information ... */}
-
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5" />
-                      Incident Details
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-700">Harm Types:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {getHarmTypes(selectedIncident).map((harmType, index) => (
-                            <Badge key={index} className={getHarmTypeColor(harmType)}>
-                              {harmType}
-                            </Badge>
-                          ))}
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <User className="h-5 w-5" />
+                        Submitter Information
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Name:</span>{" "}
+                          {selectedIncident.userBlock.firstName} {selectedIncident.userBlock.lastName}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Email:</span>{" "}
+                          {selectedIncident.userBlock.emailAddress}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">User ID:</span>{" "}
+                          <code className="text-xs bg-gray-100 px-1 rounded">{selectedIncident.userId}</code>
                         </div>
                       </div>
-                      {/* ... existing classification and violation code ... */}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Case Information
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Status:</span>{" "}
+                          <Badge className={getStatusColor(transformStatus(selectedIncident.status))}>
+                            <div className="flex items-center gap-1">
+                              {getStatusIcon(transformStatus(selectedIncident.status))}
+                              {transformStatus(selectedIncident.status).replace("_", " ").toUpperCase()}
+                            </div>
+                          </Badge>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Submitted:</span>{" "}
+                          {new Date(selectedIncident.createdAt).toLocaleDateString("en-US", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}{" "}
+                          at{" "}
+                          {new Date(selectedIncident.createdAt).toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Location:</span>{" "}
+                          {selectedIncident.incidentBlock.country || "Unknown"}
+                          {selectedIncident.incidentBlock.city ? `, ${selectedIncident.incidentBlock.city}` : ""}
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Globe className="h-5 w-5" />
-                      Affected Platforms
-                    </h3>
-                    <div className="space-y-2">
-                      {getAllPlatforms(selectedIncident).map((platform, index) => (
-                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <Badge variant="secondary">{platform.platform}</Badge>
-                            <span className="text-xs text-gray-600">
-                              {platform.userCount} user{platform.userCount !== 1 ? "s" : ""} affected
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            {platform.profileUrls.map((url, urlIndex) => (
-                              <div key={urlIndex} className="text-xs text-gray-600 flex items-center gap-1">
-                                <ExternalLink className="h-3 w-3" />
-                                <span className="truncate">{url}</span>
-                              </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5" />
+                        Incident Details
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Harm Types:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {getHarmTypes(selectedIncident).map((harmType, index) => (
+                              <Badge key={index} className={getHarmTypeColor(harmType)}>
+                                {harmType}
+                              </Badge>
                             ))}
                           </div>
                         </div>
-                      ))}
+                        {selectedIncident.incidentBlock.platformForDynamicQuestions && (
+                          <div>
+                            <span className="font-medium text-gray-700">Primary Platform:</span>{" "}
+                            {selectedIncident.incidentBlock.platformForDynamicQuestions}
+                          </div>
+                        )}
+                        {selectedIncident.incidentBlock.incidentClassification && (
+                          <div>
+                            <span className="font-medium text-gray-700">Classification:</span>{" "}
+                            {selectedIncident.incidentBlock.incidentClassification}
+                          </div>
+                        )}
+                        {selectedIncident.incidentBlock.violationCode && (
+                          <div>
+                            <span className="font-medium text-gray-700">Violation Code:</span>{" "}
+                            {selectedIncident.incidentBlock.violationCode}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Globe className="h-5 w-5" />
+                        Affected Platforms
+                      </h3>
+                      <div className="space-y-2">
+                        {getAllPlatforms(selectedIncident).map((platform, index) => (
+                          <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge variant="secondary">{platform.platform}</Badge>
+                              <span className="text-xs text-gray-600">
+                                {platform.userCount} user{platform.userCount !== 1 ? "s" : ""} affected
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              {platform.profileUrls.map((url, urlIndex) => (
+                                <div key={urlIndex} className="text-xs text-gray-600 flex items-center gap-1">
+                                  <ExternalLink className="h-3 w-3" />
+                                  <span className="truncate">{url}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-
-                  {selectedIncident.incidentBlock.harmTypeGroups &&
-                    selectedIncident.incidentBlock.harmTypeGroups.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-3">Harm Type Groups</h3>
-                        <div className="space-y-4">
-                          {selectedIncident.incidentBlock.harmTypeGroups.map((group, index) => (
-                            <div key={group.id} className="border rounded-lg p-4 bg-gray-50">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Badge className={getHarmTypeColor(group.harmType)}>{group.harmType}</Badge>
-                                <span className="text-sm text-gray-600">
-                                  {Object.keys(group.platformData || {}).length} platform(s)
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {Object.values(group.platformData || {}).map((platformData, platformIndex) => (
-                                  <div key={platformIndex} className="bg-white p-3 rounded border">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <Badge variant="outline">{platformData.platform}</Badge>
-                                      <span className="text-xs text-gray-600">{platformData.userCount} affected</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                      {platformData.profileUrls.map((url, urlIndex) => (
-                                        <div key={urlIndex} className="text-xs text-gray-600 flex items-center gap-1">
-                                          <ExternalLink className="h-3 w-3" />
-                                          <span className="truncate">{url}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                 </div>
 
-                {/* ... existing description, dynamic extras, and additional context sections ... */}
+                {/* Description */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Full Description</h3>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-4 rounded-lg">
+                    {selectedIncident.incidentBlock.violationReason || "No description provided"}
+                  </p>
+                </div>
+
+                {/* Dynamic Extras for Impersonation/Fraud cases */}
+                {selectedIncident.incidentBlock.dynamicExtras && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Additional Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedIncident.incidentBlock.dynamicExtras.realAccountUrl && (
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <span className="font-medium text-blue-900">Real Account URL:</span>
+                          <p className="text-sm text-blue-800 mt-1 break-all">
+                            {selectedIncident.incidentBlock.dynamicExtras.realAccountUrl}
+                          </p>
+                        </div>
+                      )}
+                      {selectedIncident.incidentBlock.dynamicExtras.fakeAccountUrls && (
+                        <div className="bg-red-50 p-3 rounded-lg">
+                          <span className="font-medium text-red-900">Fake Account URLs:</span>
+                          <p className="text-sm text-red-800 mt-1 break-all">
+                            {selectedIncident.incidentBlock.dynamicExtras.fakeAccountUrls}
+                          </p>
+                        </div>
+                      )}
+                      {selectedIncident.incidentBlock.dynamicExtras.proofOfRealAccount && (
+                        <div className="bg-green-50 p-3 rounded-lg">
+                          <span className="font-medium text-green-900">Proof of Real Account:</span>
+                          <p className="text-sm text-green-800 mt-1">
+                            {selectedIncident.incidentBlock.dynamicExtras.proofOfRealAccount}
+                          </p>
+                        </div>
+                      )}
+                      {selectedIncident.incidentBlock.dynamicExtras.sumSubVerificationId && (
+                        <div className="bg-purple-50 p-3 rounded-lg">
+                          <span className="font-medium text-purple-900">Verification ID:</span>
+                          <p className="text-sm text-purple-800 mt-1 font-mono">
+                            {selectedIncident.incidentBlock.dynamicExtras.sumSubVerificationId}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Harm Type Groups */}
+                {selectedIncident.incidentBlock.harmTypeGroups &&
+                  selectedIncident.incidentBlock.harmTypeGroups.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Harm Type Groups</h3>
+                      <div className="space-y-4">
+                        {selectedIncident.incidentBlock.harmTypeGroups.map((group, index) => (
+                          <div key={group.id} className="border rounded-lg p-4 bg-gray-50">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Badge className={getHarmTypeColor(group.harmType)}>{group.harmType}</Badge>
+                              <span className="text-sm text-gray-600">
+                                {Object.keys(group.platformData || {}).length} platform(s)
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {Object.values(group.platformData || {}).map((platformData, platformIndex) => (
+                                <div key={platformIndex} className="bg-white p-3 rounded border">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <Badge variant="outline">{platformData.platform}</Badge>
+                                    <span className="text-xs text-gray-600">{platformData.userCount} affected</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {platformData.profileUrls.map((url, urlIndex) => (
+                                      <div key={urlIndex} className="text-xs text-gray-600 flex items-center gap-1">
+                                        <ExternalLink className="h-3 w-3" />
+                                        <span className="truncate">{url}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Additional Context */}
+                {(selectedIncident.incidentBlock.culturalContext ||
+                  selectedIncident.incidentBlock.typeOfSupportProvided ||
+                  selectedIncident.incidentBlock.hackedElsewhereDetails ||
+                  selectedIncident.incidentBlock.crossPlatformDetails) && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Additional Context</h3>
+                    <div className="space-y-3">
+                      {selectedIncident.incidentBlock.culturalContext && (
+                        <div>
+                          <span className="font-medium text-gray-700">Cultural Context:</span>
+                          <p className="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded">
+                            {selectedIncident.incidentBlock.culturalContext}
+                          </p>
+                        </div>
+                      )}
+                      {selectedIncident.incidentBlock.typeOfSupportProvided && (
+                        <div>
+                          <span className="font-medium text-gray-700">Support Provided:</span>
+                          <p className="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded">
+                            {selectedIncident.incidentBlock.typeOfSupportProvided}
+                          </p>
+                        </div>
+                      )}
+                      {selectedIncident.incidentBlock.hackedElsewhereDetails && (
+                        <div>
+                          <span className="font-medium text-gray-700">Other Platforms Affected:</span>
+                          <p className="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded">
+                            {selectedIncident.incidentBlock.hackedElsewhereDetails}
+                          </p>
+                        </div>
+                      )}
+                      {selectedIncident.incidentBlock.crossPlatformDetails && (
+                        <div>
+                          <span className="font-medium text-gray-700">Cross-Platform Details:</span>
+                          <p className="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded">
+                            {selectedIncident.incidentBlock.crossPlatformDetails}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

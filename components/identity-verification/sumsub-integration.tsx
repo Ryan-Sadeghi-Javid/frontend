@@ -1,64 +1,83 @@
-"use client"
+// app/verify/[incidentId]/page.tsx
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ShieldCheck, ShieldX, UserCheck } from "lucide-react"
-import { useEffect } from "react"
+import Script from "next/script";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-interface SumSubIntegrationProps {
-  onVerificationComplete: (success: boolean, verificationData?: any) => void
-}
+const API_BASE = "https://8zo99udgc3.execute-api.us-east-1.amazonaws.com/Prod";
 
-export default function SumSubIntegration({ onVerificationComplete }: SumSubIntegrationProps) {
+export default function VerifyPage({ params }: { params: { incidentId: string } }) {
+  const router = useRouter();
+
   useEffect(() => {
-    console.log("SumSubIntegration: SDK would initialize here.")
-    return () => {
-      console.log("SumSubIntegration: SDK would be destroyed here if necessary.")
-    }
-  }, [onVerificationComplete])
+    let sdk: any;
+    let cancelled = false;
+
+    const fetchToken = async () => {
+      const r = await fetch(`${API_BASE}/sumsub/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ incidentId: params.incidentId }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return (await r.json()) as { token: string };
+    };
+
+    const waitForSdk = () =>
+      new Promise<void>((resolve, reject) => {
+        const t0 = Date.now();
+        const tick = () => {
+          if (cancelled) return reject(new Error("cancelled"));
+          if ((window as any).snsWebSdk?.init) return resolve();
+          if (Date.now() - t0 > 15000) return reject(new Error("snsWebSdk timeout"));
+          setTimeout(tick, 100);
+        };
+        tick();
+      });
+
+    (async () => {
+      try {
+        const { token } = await fetchToken();
+        await waitForSdk();
+
+        const SDK: any = (window as any).snsWebSdk;
+        const updateAccessToken = async () => (await fetchToken()).token;
+
+        sdk = SDK
+          .init(token, updateAccessToken)
+          .withConf({ lang: "en" })
+          .withOptions({ addViewportTag: true, adaptIframeHeight: true })
+          .on("idCheck.onApplicantStatusChanged", (p: any) => {
+            const answer = p?.reviewResult?.reviewAnswer;
+            if (answer === "GREEN") {
+              router.replace(`/thank-you?incident=${params.incidentId}`);
+            }
+          })
+          .build();
+
+        sdk.launch("#sumsub-websdk-container");
+      } catch (e: any) {
+        console.error("[SUMSUB] init failed:", e?.message || e);
+        const el = document.getElementById("sumsub-websdk-container");
+        if (el) el.textContent = "Couldn’t start verification. Check console.";
+      }
+    })();
+
+    return () => { cancelled = true; try { sdk?.destroy?.(); } catch {} };
+  }, [params.incidentId, router]);
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardHeader className="text-center">
-        <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-3">
-          <UserCheck className="h-10 w-10 text-primary" />
-        </div>
-        <CardTitle className="text-2xl">Identity Verification</CardTitle>
-        <CardDescription>
-          To proceed with your report, please complete the identity verification process. This helps us ensure the
-          security and integrity of all reports.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div
-          id="sumsub-websdk-container"
-          className="min-h-[300px] border rounded-md flex items-center justify-center bg-muted/50"
-        >
-          <p className="text-muted-foreground p-4">
-            (SumSub WebSDK would be embedded here. For now, use buttons below to simulate.)
-          </p>
-        </div>
-
-        <div className="text-xs text-muted-foreground text-center">
-          You will be guided to provide a photo of your ID and a selfie.
-        </div>
-
-        <div className="flex flex-col gap-3 pt-4 border-t">
-          <p className="text-sm text-center font-medium">For Demo Purposes Only:</p>
-          <Button
-            onClick={() => onVerificationComplete(true, { verificationId: "sim_verified_123" })}
-            variant="default"
-          >
-            <ShieldCheck className="mr-2 h-4 w-4" /> Simulate Verification Success
-          </Button>
-          <Button
-            onClick={() => onVerificationComplete(false, { reason: "sim_manual_rejection" })}
-            variant="destructive"
-          >
-            <ShieldX className="mr-2 h-4 w-4" /> Simulate Verification Failed
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
+    <>
+      <Script
+        id="sumsub-sdk"
+        src="https://static.sumsub.com/idensic/static/sns-websdk-builder.js"
+        strategy="afterInteractive"
+      />
+      <div className="max-w-3xl mx-auto p-6">
+        <h1 className="text-2xl mb-4">Identity verification</h1>
+        <div id="sumsub-websdk-container" className="w-full min-h-[720px] border rounded" />
+      </div>
+    </>
+  );
 }
