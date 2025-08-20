@@ -3,7 +3,13 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import VerifyClient from "@/components/verify/VerifyClient";
 
 // Server wrapper; gets { params } and keeps the sidebar/layout.
-export default function VerifyPage({ params }: { params: { incidentId: string } }) {
+export default async function VerifyPage({
+  params,
+}: {
+  params: Promise<{ incidentId: string }>;
+}) {
+  const { incidentId } = await params;
+
   return (
     <DashboardLayout currentStep="PENDING_ID_VERIFICATION">
       <div className="p-6 space-y-4">
@@ -13,7 +19,7 @@ export default function VerifyPage({ params }: { params: { incidentId: string } 
         </p>
 
         {/* The SDK renders inside this content area, not full page */}
-        <VerifyClient incidentId={params.incidentId} />
+        <VerifyClient incidentId={incidentId} />
       </div>
     </DashboardLayout>
   );
