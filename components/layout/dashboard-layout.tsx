@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-// ⬇️ NEW: use your existing config file
 import { cognitoAuthConfig } from "@/lib/cognitoAuthConfig";
 
 interface DashboardLayoutProps {
@@ -18,11 +17,7 @@ const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard", id: "dashboard" },
   { name: "Reports", icon: FileText, href: "/reports", id: "reports" },
   { name: "Add Request", icon: PlusSquare, href: "/", id: "add_request" },
-  // { name: "Log Off", icon: LogOut, href: "#", id: "logoff" },
 ];
-
-// ⬇️ NEW: set your Hosted UI domain (from Cognito > App integration)
-// e.g. "https://your-domain.auth.us-east-1.amazoncognito.com"
 const HOSTED_DOMAIN = "https://us-east-1ec0ypqy93.auth.us-east-1.amazoncognito.com";
 
 export default function DashboardLayout({ children, currentStep }: DashboardLayoutProps) {
@@ -37,16 +32,14 @@ export default function DashboardLayout({ children, currentStep }: DashboardLayo
 
   const isActive = (item: (typeof navItems)[number]) => {
     if (item.id === "add_request" && isAddRequestActive) return true;
-    if (item.href === "#") return false; // never "active" for logoff
-    if (pathname === item.href) return true; // exact match
-    if (item.href !== "/" && pathname.startsWith(item.href + "/")) return true; // nested
-    if (item.href === "/" && pathname === "/" && !isAddRequestActive) return true; // root
+    if (item.href === "#") return false;
+    if (pathname === item.href) return true;
+    if (item.href !== "/" && pathname.startsWith(item.href + "/")) return true;
+    if (item.href === "/" && pathname === "/" && !isAddRequestActive) return true;
     return false;
   };
 
-  // ⬇️ NEW: sign out at Cognito, then immediately show Hosted UI sign-in
   const handleLogout = () => {
-    // optional: clear common local tokens so SPA state doesn't look logged-in
     try {
       const keys = Object.keys(localStorage);
       for (const k of keys) {
@@ -63,14 +56,12 @@ export default function DashboardLayout({ children, currentStep }: DashboardLayo
 
     const { client_id, redirect_uri, response_type, scope } = cognitoAuthConfig;
 
-    // login URL (Hosted UI)
     const loginUrl =
       `${HOSTED_DOMAIN}/login?client_id=${encodeURIComponent(client_id)}` +
       `&response_type=${encodeURIComponent(response_type)}` +
       `&scope=${encodeURIComponent(scope)}` +
       `&redirect_uri=${encodeURIComponent(redirect_uri)}`;
 
-    // logout URL that bounces straight to the login screen
     const logoutUrl =
       `${HOSTED_DOMAIN}/logout?client_id=${encodeURIComponent(client_id)}` +
       `&logout_uri=${encodeURIComponent(loginUrl)}`;
