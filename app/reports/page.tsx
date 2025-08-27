@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "react-oidc-context"
 import DashboardLayout from "@/components/layout/dashboard-layout"
-import { useRouter } from "next/navigation";
 import {
   Loader2,
   AlertCircle,
@@ -229,8 +228,7 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
-  const [activeTab, setActiveTab] = useState<"draft" | "pending">("draft")
-  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<"draft" | "pending" | "resolved">("draft")
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>("createdAt")
@@ -542,16 +540,29 @@ export default function ReportsPage() {
           </Card>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "draft" | "pending")}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "draft" | "pending" | "resolved")}>
           <div className="flex items-center justify-between">
-            <TabsList className="grid w-auto grid-cols-2">
-              <TabsTrigger value="draft" className="flex items-center gap-2">
+            <TabsList className="grid w-auto grid-cols-3 bg-gradient-to-r from-gray-50 to-gray-100 p-1 rounded-lg shadow-sm border">
+              <TabsTrigger
+                value="draft"
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-gray-200 transition-all duration-200 hover:bg-white/50"
+              >
                 <FileText className="h-4 w-4" />
                 Draft ({statusCounts.draft || 0})
               </TabsTrigger>
-              <TabsTrigger value="pending" className="flex items-center gap-2">
+              <TabsTrigger
+                value="pending"
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-gray-200 transition-all duration-200 hover:bg-white/50"
+              >
                 <Clock className="h-4 w-4" />
                 Pending ({statusCounts.pending || 0})
+              </TabsTrigger>
+              <TabsTrigger
+                value="resolved"
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-gray-200 transition-all duration-200 hover:bg-white/50"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Resolved ({statusCounts.resolved || statusCounts.completed || 0})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -911,7 +922,9 @@ export default function ReportsPage() {
                                     <Button
                                       size="sm"
                                       className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                                      onClick={() => router.push(`/identity-verification/${incident.incidentId}`)}
+                                      onClick={() =>
+                                        (window.location.href = `/identity-verification/${incident.incidentId}`)
+                                      }
                                     >
                                       <Shield className="h-3 w-3 mr-1" />
                                       Verify
@@ -1029,6 +1042,123 @@ export default function ReportsPage() {
                                 <Badge variant="outline" className={getStatusColor("pending")}>
                                   <Clock className="h-3 w-3 mr-1" />
                                   Pending
+                                </Badge>
+                              </td>
+                              <td className="p-4">
+                                <Button variant="outline" size="sm" onClick={() => setSelectedIncident(incident)}>
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View
+                                </Button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="resolved" className="mt-0">
+            {filteredIncidents.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <CheckCircle2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {searchTerm || getActiveFilterCount() > 0
+                      ? "No matching resolved reports found"
+                      : "No resolved reports"}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {searchTerm || getActiveFilterCount() > 0
+                      ? "Try adjusting your search terms or filters to see more results."
+                      : "You don't have any resolved reports at the moment."}
+                  </p>
+                  {searchTerm || getActiveFilterCount() > 0 ? (
+                    <Button onClick={clearFilters} variant="outline">
+                      Clear All Filters
+                    </Button>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left p-4 font-medium text-gray-900">Case ID</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Harm Type</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Platforms</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Location</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Date</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Status</th>
+                          <th className="text-left p-4 font-medium text-gray-900">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {filteredIncidents.map((incident) => {
+                          const harmTypes = getHarmTypes(incident)
+                          const allPlatforms = getAllPlatforms(incident)
+                          const uniquePlatforms = [...new Set(allPlatforms.map((p) => p.platform))]
+
+                          return (
+                            <tr key={incident.incidentId} className="hover:bg-gray-50">
+                              <td className="p-4">
+                                <div className="font-mono text-sm">#{incident.incidentId.slice(-8)}</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {harmTypes.slice(0, 2).map((harmType, index) => (
+                                    <Badge key={index} className={getHarmTypeColor(harmType)} variant="outline">
+                                      {harmType}
+                                    </Badge>
+                                  ))}
+                                  {harmTypes.length > 2 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{harmTypes.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {uniquePlatforms.slice(0, 2).map((platform, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {platform}
+                                    </Badge>
+                                  ))}
+                                  {uniquePlatforms.length > 2 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{uniquePlatforms.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="text-sm text-gray-600 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {incident.incidentBlock.country || "Unknown"}
+                                  {incident.incidentBlock.city && `, ${incident.incidentBlock.city}`}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="text-sm text-gray-600 flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {new Date(incident.createdAt).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <Badge variant="outline" className={getStatusColor("resolved")}>
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Resolved
                                 </Badge>
                               </td>
                               <td className="p-4">
