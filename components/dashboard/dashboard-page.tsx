@@ -668,7 +668,7 @@ export default function DashboardPage() {
                   <Zap className="h-5 w-5 text-red-600" />
                   Take It Down Act Compliance
                 </CardTitle>
-                <p className="text-sm text-gray-600">24-hour mandate for non-consensual intimate image removal</p>
+                <p className="text-sm text-gray-600">48-hour mandate for non-consensual intimate image removal</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center p-4 bg-red-50 rounded-lg">
