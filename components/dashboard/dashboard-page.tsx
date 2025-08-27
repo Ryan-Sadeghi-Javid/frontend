@@ -120,9 +120,9 @@ const platformDistributionData = [
     percentage: 34.2,
     color: "#94a3b8",
     harmTypes: [
-      { name: "Fraud/Scam", incidents: 1117, color: "#8b5cf6" },
+      { name: "Hacked Account Takeover", incidents: 1117, color: "#ef4444" },
       { name: "Impersonation", incidents: 838, color: "#f97316" },
-      { name: "Hacked Account", incidents: 558, color: "#ef4444" },
+      { name: "Fraud/Scam", incidents: 445, color: "#8b5cf6" },
       { name: "Harassment", incidents: 279, color: "#06b6d4" },
       { name: "Hate Speech", incidents: 445, color: "#84cc16" },
       { name: "NCII (Non-consensual)", incidents: 234, color: "#ec4899" },
@@ -464,7 +464,21 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Incident Reporting Velocity</CardTitle>
-                <p className="text-sm text-gray-600">Average time from incident to report submission</p>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p className="font-medium">Measurement Timeline:</p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span>Start: Incident occurs</span>
+                    </div>
+                    <span>→</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>End: Report submitted to platform</span>
+                    </div>
+                  </div>
+                  <p className="text-xs italic">Shows how quickly users report incidents after they happen</p>
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -481,7 +495,21 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Resolution Time by Platform</CardTitle>
-                <p className="text-sm text-gray-600">Average time from report to resolution</p>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p className="font-medium">Measurement Timeline:</p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Start: Report received by platform</span>
+                    </div>
+                    <span>→</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>End: Incident resolved/action taken</span>
+                    </div>
+                  </div>
+                  <p className="text-xs italic">Shows platform response time from report to resolution</p>
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
