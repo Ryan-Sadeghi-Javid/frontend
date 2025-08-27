@@ -41,38 +41,38 @@ import {
 const velocityData = [
   {
     platform: "Instagram",
-    avgReportTime: 2.3,
-    avgResolutionTime: 18.5,
+    avgReportTime: 138, // 2.3 hours * 60 = 138 minutes
+    avgResolutionTime: 1110, // 18.5 hours * 60 = 1110 minutes
     totalReports: 1247,
   },
   {
     platform: "Facebook",
-    avgReportTime: 1.8,
-    avgResolutionTime: 22.1,
+    avgReportTime: 108, // 1.8 hours * 60 = 108 minutes
+    avgResolutionTime: 1326, // 22.1 hours * 60 = 1326 minutes
     totalReports: 2156,
   },
   {
     platform: "WhatsApp",
-    avgReportTime: 3.1,
-    avgResolutionTime: 15.2,
+    avgReportTime: 186, // 3.1 hours * 60 = 186 minutes
+    avgResolutionTime: 912, // 15.2 hours * 60 = 912 minutes
     totalReports: 892,
   },
   {
     platform: "Messenger",
-    avgReportTime: 2.7,
-    avgResolutionTime: 19.8,
+    avgReportTime: 162, // 2.7 hours * 60 = 162 minutes
+    avgResolutionTime: 1188, // 19.8 hours * 60 = 1188 minutes
     totalReports: 634,
   },
   {
     platform: "Twitter",
-    avgReportTime: 1.5,
-    avgResolutionTime: 31.2,
+    avgReportTime: 90, // 1.5 hours * 60 = 90 minutes
+    avgResolutionTime: 1872, // 31.2 hours * 60 = 1872 minutes
     totalReports: 1823,
   },
   {
     platform: "TikTok",
-    avgReportTime: 4.2,
-    avgResolutionTime: 28.7,
+    avgReportTime: 252, // 4.2 hours * 60 = 252 minutes
+    avgResolutionTime: 1722, // 28.7 hours * 60 = 1722 minutes
     totalReports: 1456,
   },
 ]
@@ -302,7 +302,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Avg Resolution Time</p>
-                <p className="text-3xl font-bold text-gray-900">{avgResolutionTime.toFixed(1)}h</p>
+                <p className="text-3xl font-bold text-gray-900">{avgResolutionTime.toFixed(1)}m</p>
                 <div className="flex items-center mt-2">
                   <TrendingDown className="h-4 w-4 text-green-600 mr-1" />
                   <span className="text-sm text-green-600">-8.2% improvement</span>
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                   <BarChart data={velocityData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="platform" />
-                    <YAxis label={{ value: "Hours", angle: -90, position: "insideLeft" }} />
+                    <YAxis label={{ value: "Minutes", angle: -90, position: "insideLeft" }} />
                     <Tooltip />
                     <Bar dataKey="avgReportTime" fill="#3b82f6" name="Avg Report Time" />
                   </BarChart>
@@ -516,7 +516,7 @@ export default function DashboardPage() {
                   <BarChart data={velocityData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="platform" />
-                    <YAxis label={{ value: "Hours", angle: -90, position: "insideLeft" }} />
+                    <YAxis label={{ value: "Minutes", angle: -90, position: "insideLeft" }} />
                     <Tooltip />
                     <Bar dataKey="avgResolutionTime" fill="#10b981" name="Avg Resolution Time" />
                   </BarChart>
@@ -608,21 +608,21 @@ export default function DashboardPage() {
                       <tr key={platform.platform} className="border-b">
                         <td className="p-3 font-medium">{platform.platform}</td>
                         <td className="p-3">{platform.totalReports.toLocaleString()}</td>
-                        <td className="p-3">{platform.avgReportTime}h</td>
-                        <td className="p-3">{platform.avgResolutionTime}h</td>
+                        <td className="p-3">{platform.avgReportTime}m</td>
+                        <td className="p-3">{platform.avgResolutionTime}m</td>
                         <td className="p-3">
                           <Badge
                             variant={
-                              platform.avgResolutionTime < 20
+                              platform.avgResolutionTime < 1200
                                 ? "default"
-                                : platform.avgResolutionTime < 30
+                                : platform.avgResolutionTime < 1800
                                   ? "secondary"
                                   : "destructive"
                             }
                           >
-                            {platform.avgResolutionTime < 20
+                            {platform.avgResolutionTime < 1200
                               ? "Excellent"
-                              : platform.avgResolutionTime < 30
+                              : platform.avgResolutionTime < 1800
                                 ? "Good"
                                 : "Needs Improvement"}
                           </Badge>
