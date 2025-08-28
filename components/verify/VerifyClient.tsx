@@ -27,7 +27,7 @@ export default function VerifyClient({ incidentId }: { incidentId: string }) {
     let cancelled = false;
 
     const fetchToken = async (): Promise<TokenResp> => {
-      const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/sumsub/token`, {
+      const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/Prod/sumsub/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incidentId }),
@@ -82,7 +82,7 @@ export default function VerifyClient({ incidentId }: { incidentId: string }) {
     try {
       if (!applicantIdRef.current) {
         try {
-          const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/sumsub/token`, {
+          const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/Prod/sumsub/token`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ incidentId }),
@@ -95,7 +95,7 @@ export default function VerifyClient({ incidentId }: { incidentId: string }) {
       }
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/incidents/${encodeURIComponent(incidentId)}/finalize`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/Prod/incidents/${encodeURIComponent(incidentId)}/finalize`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -13,3 +13,6 @@ This is a **Next.js (App Router)** frontend that authenticates with **Amazon Cog
   Access to the Cognito User Pool and the API base URL
 
 ## 1) Clone and Install
+        git clone https://github.com/ryanjones1997/frontend.git
+    cd frontend
+    npm install

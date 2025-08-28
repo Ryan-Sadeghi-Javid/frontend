@@ -9,7 +9,7 @@ export default function AddRequestContainer() {
 
   const onSubmitAccountInfo = async (formData: any) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE!}/incidents`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE!}/Prod/incidents`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
