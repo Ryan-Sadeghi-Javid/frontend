@@ -12,7 +12,7 @@ export async function finalizeIncidentVerification({
 }) {
   const token = await getAccessToken();
 
-  const endpoint = `${process.env.NEXT_PUBLIC_API_BASE_URL}/Prod/incidents/${incidentId}/verify`
+  const endpoint = `${process.env.NEXT_PUBLIC_API_BASE_URL!}/Prod/incidents/${incidentId}/verify`
 
   const response = await fetch(endpoint, {
     method: "PATCH",

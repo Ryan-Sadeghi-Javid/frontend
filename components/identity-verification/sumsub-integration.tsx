@@ -13,7 +13,7 @@ export default function VerifyPage({ params }: { params: { incidentId: string } 
     let cancelled = false;
 
     const fetchToken = async () => {
-      const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/Prod/sumsub/token`, {
+      const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL!}/Prod/sumsub/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incidentId: params.incidentId }),

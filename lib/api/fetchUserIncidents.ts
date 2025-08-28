@@ -12,17 +12,14 @@ export async function fetchUserIncidents(token: string) {
 
   const data = await res.json();
 
-  // 🔍 If body is a stringified array, parse it
   if (typeof data.body === "string") {
     return JSON.parse(data.body);
   }
 
-  // 🔍 If body is already parsed (unlikely), return as-is
   if (Array.isArray(data.body)) {
     return data.body;
   }
 
-  // 🔍 If response is already the array
   if (Array.isArray(data)) {
     return data;
   }

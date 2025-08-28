@@ -2,7 +2,7 @@
 export async function uploadEvidenceFile(file: File): Promise<{ fileKey: string }> {
 
   // 1. Ask your Lambda for a pre-signed URL
-  const presignRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/Prod/generate-upload-url`, {
+  const presignRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL!}/Prod/generate-upload-url`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
