@@ -17,7 +17,7 @@ This is a **Next.js (App Router)** frontend that authenticates with **Amazon Cog
 ## 2) Environment variables (local)
 Create a file named .env.local at the repo root:
     ```
-    NEXT_PUBLIC_API_BASE_URL=https://8zo99udgc3.execute-api.us-east-1.amazonaws.com
+    NEXT_PUBLIC_API_BASE=https://8zo99udgc3.execute-api.us-east-1.amazonaws.com
     NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000
     ```
 ## 3) Start the app
