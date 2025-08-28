@@ -1,5 +1,5 @@
 export async function fetchUserIncidents(token: string) {
-  const res = await fetch("/user-incidents", {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE!}/Prod/user-incidents`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
