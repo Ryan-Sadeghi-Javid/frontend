@@ -1,11 +1,8 @@
 // lib/api/s3-upload.ts
 export async function uploadEvidenceFile(file: File): Promise<{ fileKey: string }> {
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "https://8zo99udgc3.execute-api.us-east-1.amazonaws.com/Prod";
 
   // 1. Ask your Lambda for a pre-signed URL
-  const presignRes = await fetch(`${apiBaseUrl}/generate-upload-url`, {
+  const presignRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/generate-upload-url`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

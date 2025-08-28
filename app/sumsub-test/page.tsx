@@ -21,7 +21,7 @@ export default function SumsubTestPage() {
 
     const fetchToken = async () => {
       const res = await fetch(
-        "https://8zo99udgc3.execute-api.us-east-1.amazonaws.com/Prod/sumsub/token",
+        `${process.env.NEXT_PUBLIC_API_BASE!}/Prod/sumsub/token`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -12,9 +12,7 @@ export async function finalizeIncidentVerification({
 }) {
   const token = await getAccessToken();
 
-  const endpoint = process.env.NEXT_PUBLIC_API_BASE_URL
-    ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/incidents/${incidentId}/verify`
-    : `https://8zo99udgc3.execute-api.us-east-1.amazonaws.com/Prod/incidents/${incidentId}/verify`;
+  const endpoint = `${process.env.NEXT_PUBLIC_API_BASE_URL}/incidents/${incidentId}/verify`
 
   const response = await fetch(endpoint, {
     method: "PATCH",

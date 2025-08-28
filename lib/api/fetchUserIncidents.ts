@@ -1,5 +1,5 @@
 export async function fetchUserIncidents(token: string) {
-  const res = await fetch("https://8zo99udgc3.execute-api.us-east-1.amazonaws.com/Prod/user-incidents", {
+  const res = await fetch("/user-incidents", {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,

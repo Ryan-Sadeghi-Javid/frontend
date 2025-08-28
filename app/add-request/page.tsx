@@ -4,14 +4,12 @@
 import { useRouter } from "next/navigation";
 import AddRequestPage from "@/components/incident-form/add-request-page";
 
-const API_BASE = "https://8zo99udgc3.execute-api.us-east-1.amazonaws.com/Prod";
-
 export default function AddRequestContainer() {
   const router = useRouter();
 
   const onSubmitAccountInfo = async (formData: any) => {
     try {
-      const res = await fetch(`${API_BASE}/incidents`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE!}/incidents`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

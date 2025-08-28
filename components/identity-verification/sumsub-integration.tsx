@@ -5,8 +5,6 @@ import Script from "next/script";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const API_BASE = "https://8zo99udgc3.execute-api.us-east-1.amazonaws.com/Prod";
-
 export default function VerifyPage({ params }: { params: { incidentId: string } }) {
   const router = useRouter();
 
@@ -15,7 +13,7 @@ export default function VerifyPage({ params }: { params: { incidentId: string } 
     let cancelled = false;
 
     const fetchToken = async () => {
-      const r = await fetch(`${API_BASE}/sumsub/token`, {
+      const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/sumsub/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incidentId: params.incidentId }),
