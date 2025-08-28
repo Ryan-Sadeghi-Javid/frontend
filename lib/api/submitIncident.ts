@@ -11,7 +11,6 @@ export async function submitIncident(
   verificationData?: any
 ): Promise<{ caseId: string }> {
   const token = await getAccessToken(); // get the logged-in user's token
-  console.log("Token:", token);
   const endpoint = `${process.env.NEXT_PUBLIC_API_BASE!}/Prod/incidents_create`;
   const bodyToSend: Record<string, any> = {
     ...payload,
