@@ -1,5 +1,6 @@
 "use client"
-
+import { deleteIncident } from "@/lib/api/deleteIncident"
+import { Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useAuth } from "react-oidc-context"
 import DashboardLayout from "@/components/layout/dashboard-layout"
@@ -35,6 +36,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { fetchUserIncidents } from "@/lib/api/fetchUserIncidents"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface HarmTypeGroup {
   id: string
@@ -205,11 +217,12 @@ const getHarmTypeColor = (harmType: string) => {
   }
 }
 
+// Normalize statuses to tab groups; also map PENDING_ID_VERIFICATION into "draft" tab.
 const transformStatus = (status: string) => {
-  if (status.toLowerCase() === "verified") {
-    return "pending"
-  }
-  return status
+  const s = (status || "").toUpperCase()
+  if (s === "VERIFIED") return "pending"
+  if (s === "PENDING_ID_VERIFICATION") return "draft"
+  return s.toLowerCase()
 }
 
 const isUnverifiedDraft = (incident: Incident) => {
@@ -240,6 +253,9 @@ export default function ReportsPage() {
     dateRange: "all",
     platformCount: "all",
   })
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Filter options derived from data
   const [filterOptions, setFilterOptions] = useState({
@@ -391,6 +407,24 @@ export default function ReportsPage() {
       ...prev,
       [filterType]: value,
     }))
+  }
+
+  const handleDeleteDraft = async (incidentId: string) => {
+    if (!auth.user?.access_token) return
+    setDeleteError(null)
+    setDeletingId(incidentId)
+    try {
+      await deleteIncident(incidentId, auth.user.access_token)
+      // Optimistic UI: remove locally
+      setIncidents((prev) => prev.filter((i) => i.incidentId !== incidentId))
+      // Close details modal if it was open for this incident
+      setSelectedIncident((curr) => (curr?.incidentId === incidentId ? null : curr))
+    } catch (e: any) {
+      // Common backend errors: 401, 403, 404, 409 (cannot_delete_finalized_incident)
+      setDeleteError(e?.message || "Failed to delete report")
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const clearFilters = () => {
@@ -764,10 +798,10 @@ export default function ReportsPage() {
                       {filters.dateRange === "7days"
                         ? "Last 7 Days"
                         : filters.dateRange === "30days"
-                          ? "Last 30 Days"
-                          : filters.dateRange === "90days"
-                            ? "Last 90 Days"
-                            : filters.dateRange}
+                        ? "Last 30 Days"
+                        : filters.dateRange === "90days"
+                        ? "Last 90 Days"
+                        : filters.dateRange}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange("dateRange", "all")} />
                     </Badge>
                   )}
@@ -790,7 +824,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          {/* Error Alert */}
+          {/* Error Alerts */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -802,6 +836,13 @@ export default function ReportsPage() {
                   Try Again
                 </Button>
               </AlertDescription>
+            </Alert>
+          )}
+          {deleteError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Delete Failed</AlertTitle>
+              <AlertDescription className="mt-2">{deleteError}</AlertDescription>
             </Alert>
           )}
 
@@ -930,6 +971,48 @@ export default function ReportsPage() {
                                       Verify
                                     </Button>
                                   )}
+
+                                  {/* NEW: Cancel/Delete action */}
+                                  <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm" className="gap-1">
+                                      <Trash2 className="h-3 w-3" />
+                                      Cancel
+                                    </Button>
+                                  </AlertDialogTrigger>
+
+                                  {/* Force solid white bg + strong shadow so it’s not see-through */}
+                                  <AlertDialogContent className="bg-white text-gray-900 shadow-2xl border rounded-xl">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Cancel this draft?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will permanently delete the report from our system. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+
+                                    <AlertDialogFooter>
+                                      {/* Make cancel text black explicitly */}
+                                      <AlertDialogCancel className="text-black border-gray-300">
+                                        Keep Draft
+                                      </AlertDialogCancel>
+
+                                      <AlertDialogAction
+                                        className="bg-red-600 hover:bg-red-700 text-white"
+                                        onClick={() => handleDeleteDraft(incident.incidentId)}
+                                        disabled={deletingId === incident.incidentId}
+                                      >
+                                        {deletingId === incident.incidentId ? (
+                                          <>
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Deleting…
+                                          </>
+                                        ) : (
+                                          "Delete"
+                                        )}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                                 </div>
                               </td>
                             </tr>
@@ -1334,7 +1417,7 @@ export default function ReportsPage() {
                   </p>
                 </div>
 
-                {/* Dynamic Extras for Impersonation/Fraud cases */}
+                {/* Dynamic Extras */}
                 {selectedIncident.incidentBlock.dynamicExtras && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3">Additional Information</h3>
@@ -1381,7 +1464,7 @@ export default function ReportsPage() {
                     <div>
                       <h3 className="text-lg font-semibold mb-3">Harm Type Groups</h3>
                       <div className="space-y-4">
-                        {selectedIncident.incidentBlock.harmTypeGroups.map((group, index) => (
+                        {selectedIncident.incidentBlock.harmTypeGroups.map((group) => (
                           <div key={group.id} className="border rounded-lg p-4 bg-gray-50">
                             <div className="flex items-center gap-2 mb-3">
                               <Badge className={getHarmTypeColor(group.harmType)}>{group.harmType}</Badge>
