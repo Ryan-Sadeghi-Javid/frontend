@@ -29,12 +29,17 @@ import type {
   HarmTypeGroup,
 } from "@/types"
 
-const PLATFORM_REPORT_URLS: Record<PlatformSelect, string> = {
+// Only these 4 platforms are supported for redirecting
+const SUPPORTED_PLATFORMS = ["Instagram", "Facebook", "Messenger", "WhatsApp"] as const
+type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number]
+
+const PLATFORM_REPORT_URLS: Record<SupportedPlatform, string> = {
   Instagram: "https://help.instagram.com/370054663112398",
   Facebook: "https://www.facebook.com/help/263149623790594",
   Messenger: "https://www.facebook.com/help/messenger-app/713635396288741",
   WhatsApp: "https://faq.whatsapp.com/",
 }
+
 
 const isEmailKey = (k: string) => /email/i.test(k)
 const isPhoneKey = (k: string) => /(phone|mobile|whats ?app)/i.test(k)
@@ -80,20 +85,14 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
   const [lastPhone, setLastPhone] = useState<string | null>(null)
 
   // ---- derived: if union of all selected platforms === 1, it's single-platform
-  const singlePlatform: PlatformSelect | null = useMemo(() => {
-    const all = new Set<PlatformSelect>(
-      formData.harmTypeGroups.flatMap((g) => g.selectedPlatforms || [])
-    )
-    if (all.size === 1) {
-      const only = Array.from(all)[0]
-      return (["Instagram", "Facebook", "Messenger", "WhatsApp"] as PlatformSelect[]).includes(only as PlatformSelect)
-        ? (only as PlatformSelect)
-        : null
-    }
-    return null
-  }, [formData.harmTypeGroups])
+const singlePlatform: SupportedPlatform | null = useMemo(() => {
+  const all = new Set<string>(formData.harmTypeGroups.flatMap((g) => g.selectedPlatforms || []))
+  if (all.size !== 1) return null
+  const only = Array.from(all)[0]
+  return (SUPPORTED_PLATFORMS as readonly string[]).includes(only) ? (only as SupportedPlatform) : null
+}, [formData.harmTypeGroups])
 
-  const singlePlatformUrl = singlePlatform ? PLATFORM_REPORT_URLS[singlePlatform] : null
+const singlePlatformUrl = singlePlatform ? PLATFORM_REPORT_URLS[singlePlatform] : null
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
