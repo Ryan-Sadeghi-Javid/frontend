@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ChangeEvent, type FormEvent } from "react"
+import { useState, useMemo, type ChangeEvent, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, ArrowRight, User, FileText, Plus, Trash2, Shield } from 'lucide-react'
+import { AlertCircle, ArrowRight, User, FileText, Plus, Trash2, Shield } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 
 import {
@@ -29,7 +29,13 @@ import type {
   HarmTypeGroup,
 } from "@/types"
 
-// -------- helpers to recognize email / phone-like field keys
+const PLATFORM_REPORT_URLS: Record<PlatformSelect, string> = {
+  Instagram: "https://help.instagram.com/370054663112398",
+  Facebook: "https://www.facebook.com/help/263149623790594",
+  Messenger: "https://www.facebook.com/help/messenger-app/713635396288741",
+  WhatsApp: "https://faq.whatsapp.com/",
+}
+
 const isEmailKey = (k: string) => /email/i.test(k)
 const isPhoneKey = (k: string) => /(phone|mobile|whats ?app)/i.test(k)
 
@@ -55,9 +61,10 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
     const base = { ...initialIncidentFormData, ...initialData }
     if (!base.harmTypeGroups || base.harmTypeGroups.length === 0) {
       const first: HarmTypeGroup = {
-        id: typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id:
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         harmType: "",
         selectedPlatforms: [],
         platformData: {} as Record<PlatformSelect, PlatformProfile>,
@@ -71,6 +78,22 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
   // Last seen contact values (for suggestions)
   const [lastEmail, setLastEmail] = useState<string | null>(null)
   const [lastPhone, setLastPhone] = useState<string | null>(null)
+
+  // ---- derived: if union of all selected platforms === 1, it's single-platform
+  const singlePlatform: PlatformSelect | null = useMemo(() => {
+    const all = new Set<PlatformSelect>(
+      formData.harmTypeGroups.flatMap((g) => g.selectedPlatforms || [])
+    )
+    if (all.size === 1) {
+      const only = Array.from(all)[0]
+      return (["Instagram", "Facebook", "Messenger", "WhatsApp"] as PlatformSelect[]).includes(only as PlatformSelect)
+        ? (only as PlatformSelect)
+        : null
+    }
+    return null
+  }, [formData.harmTypeGroups])
+
+  const singlePlatformUrl = singlePlatform ? PLATFORM_REPORT_URLS[singlePlatform] : null
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -110,9 +133,10 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
   // ---- Harm Type Group Management
   const addHarmTypeGroup = () => {
     const newGroup: HarmTypeGroup = {
-      id: typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       harmType: "",
       selectedPlatforms: [],
       platformData: {} as Record<PlatformSelect, PlatformProfile>,
@@ -172,9 +196,9 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
     const requiredFields = PLATFORM_HARM_REQUIREMENTS[platform]?.[harmType] || []
     requiredFields.forEach((fieldKey) => {
       if (MULTI_URL_FIELDS.includes(fieldKey)) {
-        platformData[fieldKey] = [""]
+        ;(platformData as any)[fieldKey] = [""]
       } else {
-        platformData[fieldKey] = ""
+        ;(platformData as any)[fieldKey] = ""
       }
     })
 
@@ -211,12 +235,18 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
   }
 
   // Multi-URL management
-  const updatePlatformMultiUrlField = (groupId: string, platform: PlatformSelect, fieldKey: string, urlIndex: number, value: string) => {
+  const updatePlatformMultiUrlField = (
+    groupId: string,
+    platform: PlatformSelect,
+    fieldKey: string,
+    urlIndex: number,
+    value: string
+  ) => {
     setFormData((prev) => ({
       ...prev,
       harmTypeGroups: prev.harmTypeGroups.map((group) => {
         if (group.id === groupId) {
-          const currentUrls = (group.platformData[platform]?.[fieldKey] as string[]) || [""]
+          const currentUrls = ((group.platformData[platform] as any)?.[fieldKey] as string[]) || [""]
           const newUrls = currentUrls.map((url: string, j: number) => (j === urlIndex ? value : url))
           return {
             ...group,
@@ -239,7 +269,7 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
       ...prev,
       harmTypeGroups: prev.harmTypeGroups.map((group) => {
         if (group.id === groupId) {
-          const currentUrls = (group.platformData[platform]?.[fieldKey] as string[]) || [""]
+          const currentUrls = ((group.platformData[platform] as any)?.[fieldKey] as string[]) || [""]
           return {
             ...group,
             platformData: {
@@ -256,12 +286,17 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
     }))
   }
 
-  const removeUrlFromPlatformField = (groupId: string, platform: PlatformSelect, fieldKey: string, urlIndex: number) => {
+  const removeUrlFromPlatformField = (
+    groupId: string,
+    platform: PlatformSelect,
+    fieldKey: string,
+    urlIndex: number
+  ) => {
     setFormData((prev) => ({
       ...prev,
       harmTypeGroups: prev.harmTypeGroups.map((group) => {
         if (group.id === groupId) {
-          const currentUrls = (group.platformData[platform]?.[fieldKey] as string[]) || [""]
+          const currentUrls = ((group.platformData[platform] as any)?.[fieldKey] as string[]) || [""]
           if (currentUrls.length > 1) {
             return {
               ...group,
@@ -348,6 +383,17 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    // Single-platform guardrail: open platform reporting and stop flow
+    if (singlePlatformUrl) {
+      // optional callback if you want to track/branch UI
+      try {
+        onDeferToPlatform?.()
+      } catch {}
+      window.open(singlePlatformUrl, "_blank", "noopener,noreferrer")
+      return
+    }
+
     if (!validateForm()) return
     onSubmitAccountInfo(formData)
   }
@@ -369,6 +415,33 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
         </CardHeader>
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-10">
+            {/* Single-platform banner */}
+            {/* Single-platform banner */}
+{singlePlatform && singlePlatformUrl && (
+  <Alert className="border-amber-200 bg-amber-50">
+    <AlertCircle className="h-4 w-4" />
+    <AlertTitle className="text-amber-900 font-semibold">Single-platform report detected</AlertTitle>
+    <AlertDescription className="text-amber-800">
+      <p>
+        Our tool is for cross-platform cases. Since your selections currently only include{" "}
+        <span className="font-medium">{singlePlatform}</span>
+        {". "}Please report directly on that platform.
+      </p>
+      <div className="mt-3">
+        <a
+          href={singlePlatformUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+        >
+          Go to {singlePlatform} reporting
+        </a>
+      </div>
+    </AlertDescription>
+  </Alert>
+)}
+
+
             {/* Submitter Info */}
             <section className="space-y-6">
               <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
@@ -443,7 +516,10 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
               </div>
 
               {formData.harmTypeGroups.map((group, groupIndex) => (
-                <div key={group.id} className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
+                <div
+                  key={group.id}
+                  className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200"
+                >
                   <div className="flex items-center justify-between mb-6">
                     <h4 className="text-lg font-semibold text-gray-900">Harm Type Group {groupIndex + 1}</h4>
                     {formData.harmTypeGroups.length > 1 && (
@@ -544,9 +620,11 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
                                   const currentValue = String((platformData as any)?.[fieldKey] ?? "")
                                   // Only suggest when empty
                                   const suggestion =
-                                    (!currentValue.trim() && isEmailKey(fieldKey) && lastEmail) ? lastEmail :
-                                    (!currentValue.trim() && isPhoneKey(fieldKey) && lastPhone) ? lastPhone :
-                                    null
+                                    !currentValue.trim() && isEmailKey(fieldKey) && lastEmail
+                                      ? lastEmail
+                                      : !currentValue.trim() && isPhoneKey(fieldKey) && lastPhone
+                                      ? lastPhone
+                                      : null
 
                                   return (
                                     <div key={fieldKey} className="space-y-2">
@@ -572,71 +650,82 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
                                       {MULTI_URL_FIELDS.includes(fieldKey) ? (
                                         // Multi-URL field
                                         <div className="space-y-2">
-                                          {(platformData?.[fieldKey] as string[] || [""]).map((url: string, urlIndex: number) => (
-                                            <div key={urlIndex} className="flex gap-2">
-                                              <Input
-                                                value={url}
-                                                onChange={(e) =>
-                                                  updatePlatformMultiUrlField(
-                                                    group.id,
-                                                    platform,
-                                                    fieldKey,
-                                                    urlIndex,
-                                                    e.target.value,
-                                                  )
-                                                }
-                                                placeholder={`${PLATFORM_HARM_FIELD_LABELS[fieldKey]} ${urlIndex + 1}`}
-                                                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                                                required
-                                              />
-                                              {((platformData?.[fieldKey] as string[]) || []).length > 1 && (
-                                                <Button
-                                                  type="button"
-                                                  onClick={() =>
-                                                    removeUrlFromPlatformField(group.id, platform, fieldKey, urlIndex)
+                                          {(((platformData as any)?.[fieldKey] as string[]) || [""]).map(
+                                            (url: string, urlIndex: number) => (
+                                              <div key={urlIndex} className="flex gap-2">
+                                                <Input
+                                                  value={url}
+                                                  onChange={(e) =>
+                                                    updatePlatformMultiUrlField(
+                                                      group.id,
+                                                      platform,
+                                                      fieldKey,
+                                                      urlIndex,
+                                                      e.target.value
+                                                    )
                                                   }
-                                                  variant="outline"
-                                                  size="sm"
-                                                  className="border-red-300 text-red-600 hover:bg-red-50"
-                                                >
-                                                  <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                              )}
-                                            </div>
-                                          ))}
+                                                  placeholder={`${PLATFORM_HARM_FIELD_LABELS[fieldKey]} ${urlIndex + 1}`}
+                                                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                                  required
+                                                />
+                                                {((((platformData as any)?.[fieldKey] as string[]) || []).length >
+                                                  1) && (
+                                                  <Button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      removeUrlFromPlatformField(
+                                                        group.id,
+                                                        platform,
+                                                        fieldKey,
+                                                        urlIndex
+                                                      )
+                                                    }
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-red-300 text-red-600 hover:bg-red-50"
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            )
+                                          )}
                                         </div>
                                       ) : (
                                         // Single-value with inline ghost suggestion + Tab to accept
-                                        // Single-value with inline ghost suggestion + Tab to accept (no overlap)
                                         <div className="relative">
                                           <Input
                                             value={currentValue}
                                             onChange={(e) =>
-                                              updatePlatformData(group.id, platform, { [fieldKey]: e.target.value } as any)
+                                              updatePlatformData(group.id, platform, {
+                                                [fieldKey]: e.target.value,
+                                              } as any)
                                             }
                                             onKeyDown={(e) => {
                                               if (e.key === "Tab" && suggestion) {
                                                 e.preventDefault()
-                                                updatePlatformData(group.id, platform, { [fieldKey]: suggestion } as any)
+                                                updatePlatformData(group.id, platform, {
+                                                  [fieldKey]: suggestion,
+                                                } as any)
                                               }
                                             }}
-                                            // hide placeholder when suggestion is shown
-                                            placeholder={suggestion ? "" : (PLATFORM_HARM_FIELD_LABELS[fieldKey] || fieldKey)}
-                                            // add right padding only when the Tab badge is visible
-                                            className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${suggestion ? "pr-16" : ""}`}
+                                            placeholder={
+                                              suggestion ? "" : PLATFORM_HARM_FIELD_LABELS[fieldKey] || fieldKey
+                                            }
+                                            className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                                              suggestion ? "pr-16" : ""
+                                            }`}
                                             required
                                           />
 
                                           {suggestion && (
                                             <>
-                                              {/* ghost text on the left */}
                                               <span
                                                 className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400 select-none truncate"
                                                 aria-hidden="true"
                                               >
                                                 {suggestion}
                                               </span>
-                                              {/* tiny Tab badge on the right */}
                                               <kbd
                                                 className="pointer-events-none absolute inset-y-0 right-3 my-auto hidden sm:inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium bg-gray-50 text-gray-500"
                                                 aria-hidden="true"
@@ -646,7 +735,6 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
                                             </>
                                           )}
                                         </div>
-
                                       )}
                                     </div>
                                   )
@@ -780,7 +868,11 @@ export default function AddRequestPage({ onSubmitAccountInfo, onDeferToPlatform,
               <Button
                 type="submit"
                 size="lg"
-                className="min-w-[250px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+                disabled={!!singlePlatformUrl}
+                title={
+                  singlePlatformUrl ? "Single-platform reports should be filed on the platform directly." : undefined
+                }
+                className="min-w-[250px] bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-8 rounded-lg transition-colors"
               >
                 Proceed to Identity Verification <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

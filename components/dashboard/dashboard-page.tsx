@@ -41,26 +41,26 @@ import {
 const velocityData = [
   {
     platform: "Instagram",
-    avgReportTime: 138, // 2.3 hours * 60 = 138 minutes
-    avgResolutionTime: 35, // 18.5 hours * 60 = 1110 minutes
+    avgReportTime: 8, // 2.3 hours * 60 = 138 minutes
+    avgResolutionTime: 4, // 18.5 hours * 60 = 1110 minutes
     totalReports: 1247,
   },
   {
     platform: "Facebook",
-    avgReportTime: 108, // 1.8 hours * 60 = 108 minutes
-    avgResolutionTime: 45, // 22.1 hours * 60 = 1326 minutes
+    avgReportTime: 5, // 1.8 hours * 60 = 108 minutes
+    avgResolutionTime: 3, // 22.1 hours * 60 = 1326 minutes
     totalReports: 2156,
   },
   {
     platform: "WhatsApp",
-    avgReportTime: 186, // 3.1 hours * 60 = 186 minutes
-    avgResolutionTime: 90, // 15.2 hours * 60 = 912 minutes
+    avgReportTime: 10, // 3.1 hours * 60 = 186 minutes
+    avgResolutionTime: 6, // 15.2 hours * 60 = 912 minutes
     totalReports: 892,
   },
   {
     platform: "Messenger",
-    avgReportTime: 162, // 2.7 hours * 60 = 162 minutes
-    avgResolutionTime: 50, // 19.8 hours * 60 = 1188 minutes
+    avgReportTime: 7, // 2.7 hours * 60 = 162 minutes
+    avgResolutionTime: 6, // 19.8 hours * 60 = 1188 minutes
     totalReports: 634,
   }
 ]
@@ -219,13 +219,13 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             <Calendar className="h-4 w-4 mr-2" />
             Last 30 days
           </Button>
           <Button variant="outline" size="sm">
             Export Report
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -254,7 +254,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-orange-700">Avg Platforms/Incident</p>
-                <p className="text-3xl font-bold text-orange-900">{avgPlatformsPerIncident.toFixed(1)}</p>
+                <p className="text-3xl font-bold text-orange-900">{Math.round(avgPlatformsPerIncident)}</p>
                 <div className="flex items-center mt-2">
                   <Globe className="h-4 w-4 text-orange-600 mr-1" />
                   <span className="text-sm text-orange-600">Multi-platform attacks</span>
@@ -386,7 +386,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-orange-800">
                   <Link className="h-5 w-5" />
-                  Platform Interconnection Strength
+                  Harm Lateral Movement Trend
                 </CardTitle>
                 <p className="text-sm text-gray-600">Most common platform combinations in attacks</p>
               </CardHeader>
@@ -527,7 +527,7 @@ export default function DashboardPage() {
                 <LineChart data={crossPlatformRemediationData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis yAxisId="hours" label={{ value: "Hours", angle: -90, position: "insideLeft" }} />
+                  <YAxis yAxisId="hours" label={{ value: "Minutes", angle: -90, position: "insideLeft" }} />
                   <YAxis
                     yAxisId="incidents"
                     orientation="right"
@@ -666,7 +666,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-red-600" />
-                  Take It Down Act Compliance
+                  Take It Down Bill Compliance
                 </CardTitle>
                 <p className="text-sm text-gray-600">48-hour mandate for non-consensual intimate image removal</p>
               </CardHeader>
